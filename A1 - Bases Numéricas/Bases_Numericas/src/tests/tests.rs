@@ -62,6 +62,7 @@ mod tests {
         assert_eq!(inverted_binary.get_binary(), "1010"); // Esperado: "1010"
     }
 
+
     #[test]
     fn test_bitwise_and() {
         let binary_str1 = "1010";
