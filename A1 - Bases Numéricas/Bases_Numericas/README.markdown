@@ -2,6 +2,8 @@
 
 ## Atividade de Implementação – Bases Numéricas
 
+Para rodar basta usar o comando 'cargo run' no terminal dentro da pasta "Bases_numéricas"
+
 ### Enunciado 
 
 - Números binários serão representados como strings no

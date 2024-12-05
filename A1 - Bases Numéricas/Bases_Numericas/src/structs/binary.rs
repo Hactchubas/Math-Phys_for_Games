@@ -25,9 +25,12 @@ impl Binary {
 
     pub fn get_binary(&self) -> &str {
         &self.cached_value
-        
     }
 
+    /*
+    Dado um número binário “x”, retorne o número que seja o
+    inverso bit a bit de cada dígito de “x”.
+     */
     pub fn next(&self) -> Binary {
         let mut bits: Vec<char> = self.value.chars().collect();
         let mut carry = true;
@@ -51,6 +54,10 @@ impl Binary {
         Binary::new(result, self.signal)
     }
 
+    /*
+    Given a binary number “x”, return the number that is the
+    bitwise inverse of each digit of “x”.
+    */
     pub fn invert(&self) -> Binary {
         let mut bits: Vec<char> = self.value.chars().collect();
         for i in 0..bits.len() {
@@ -64,6 +71,10 @@ impl Binary {
         Binary::new(result, self.signal)
     }
 
+    /*
+    Return both binaries in the comparison
+    with the same number of digits
+     */
     fn pad_compare(&self, other: &Self) -> (Binary, Binary) {
         let max_len = self.value.len().max(other.value.len());
 
@@ -74,6 +85,10 @@ impl Binary {
         (x_padded, y_padded)
     }
 
+    /*
+    Given a positive binary number “x”, return
+    the number represents “-x
+    */
     pub fn two_complement(&self) -> Binary {
         if self.value == "0" {
             return Binary::new("0".to_string(), '0');
@@ -82,6 +97,9 @@ impl Binary {
         result
     }
 
+    /*
+    Return the same binarie but with the signal inverted
+     */
     fn change_signal(&self) -> Binary {
         let new_signal = match self.signal {
             '1' => '0',
@@ -92,6 +110,9 @@ impl Binary {
         return Binary::new(new_value.to_string(), new_signal);
     }
 
+    /*
+    Compares two binaries by its {value} only
+     */
     fn greater_value(&self, other: &Self) -> (Binary, Binary, bool) {
         match self.clone().value > other.clone().value {
             true => (self.clone(), other.clone(), false),
@@ -102,6 +123,10 @@ impl Binary {
         }
     }
 
+    /*
+    Treats the binary if equals to zero so it does not
+    return '-0' or weirder
+     */
     fn treat_zero(&self) -> Binary {
         if self.not_zero() {
             self.clone()
@@ -110,10 +135,16 @@ impl Binary {
         }
     }
 
+    /*
+    Check if :Binary it's not zero
+     */
     fn not_zero(&self) -> bool {
         !self.clone().value.chars().all(|bit| bit == '0')
     }
 
+    /*
+    Remove unecesseary digits '0'
+     */
     fn trim(&self) -> Binary {
         if self.not_zero() {
             let mut trimmed = self.clone();
@@ -172,62 +203,14 @@ impl Binary {
         Binary::new(result.chars().rev().collect(), '0')
     }
 }
-// fn subtract(self, other: &Self) -> Binary {
-//     let mut result = String::new();
-//     let (x, y) = Binary::pad_compare(&self, other);
-//     let mut carry = false;
 
-//     for (xb, yb) in x.chars().rev().zip(y.chars().rev()).map(|(a, b)| {
-//         (
-//             Binary::new(a.to_string(), '0'),
-//             Binary::new(b.to_string(), '0'),
-//         )
-//     }) {
-//         let x = &xb.value;
-//         let y = &yb.value;
-//         let xor: &str =
-//             &(Binary::new(x.to_string(), '0') ^ Binary::new(y.to_string(), '0')).value;
-//         let and: &str =
-//             &(Binary::new(x.to_string(), '0') & Binary::new(y.to_string(), '0')).value;
-//         match xor {
-//             "1" => {
-//                 if carry {
-//                     result.push('0');
-//                 } else {
-//                     result.push('1');
-//                     carry = false;
-//                 }
-//             }
-//             "0" => {
-//                 if carry {
-//                     result.push('1');
-//                 } else {
-//                     result.push('0');
-//                 }
-//                 if and == '1'.to_string() {
-//                     carry = true;
-//                 } else {
-//                     carry = false;
-//                 }
-//             }
-//             _ => panic!("invalid binary character"),
-//         }
-//     }
-//     if carry != false {
-//         result.push('1');
-//     }
-//     Binary::new(result.chars().rev().collect(), '0')
-// }
-
-// fn module(self) -> Binary {
-//     Binary::new(self.value, '0')
-// }
-// }
 impl Default for Binary {
     fn default() -> Self {
         Binary::new("0".to_string(), '0')
     }
 }
+
+
 impl BitAnd for Binary {
     type Output = Binary;
 
@@ -327,7 +310,6 @@ impl Mul for Binary {
                     }
                     _ => Binary::new(String::from("0".to_string()), '0'),
                 }
-                // let aux_str = self.value.clone();
             })
             .reduce(|acc, b| acc + b)
             .unwrap_or_default();
@@ -377,7 +359,6 @@ impl BinaryFactory {
             }
         };
         if Self::validate(&value).is_ok() {
-            // Convert Result to Option using `.ok()`
             Some(Binary::new(value, signal.chars().next().unwrap()))
         } else {
             None
