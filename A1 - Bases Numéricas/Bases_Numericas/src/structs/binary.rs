@@ -1,22 +1,34 @@
-use std::ops::{Add, BitAnd, BitOr, BitXor};
+use std::{
+    cmp::Ordering,
+    ops::{Add, BitAnd, BitOr, BitXor, Mul, Sub},
+};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Binary {
-    pub value: String,
+    value: String,
+    signal: char,
+    cached_value: String,
 }
 
 impl Binary {
-    pub fn new(value: &str) -> Self {
+    pub fn new(value: String, signal: char) -> Binary {
+        let cached_value = match signal {
+            '1' => format!("-{}", value),
+            _ => format!("{}", value),
+        };
         Binary {
-            value: value.to_string(),
+            value,
+            signal,
+            cached_value,
         }
     }
 
-    pub fn is_valid_binary(value: &str) -> bool {
-        value.chars().all(|bit| bit == '0' || bit == '1')
+    pub fn get_binary(&self) -> &str {
+        &self.cached_value
+        
     }
 
-    pub fn next(self) -> Binary {
+    pub fn next(&self) -> Binary {
         let mut bits: Vec<char> = self.value.chars().collect();
         let mut carry = true;
 
@@ -28,7 +40,7 @@ impl Binary {
                         carry = false
                     }
                     '1' => bits[i] = '0',
-                    _ => panic!("invalid binary character"),
+                    _ => panic!("invalid binary Binary"),
                 }
             }
         }
@@ -36,123 +48,415 @@ impl Binary {
             bits.insert(0, '1');
         }
         let result: String = bits.iter().collect();
-        Binary::new(&result)
+        Binary::new(result, self.signal)
     }
 
-    pub fn invert(self) -> Binary {
+    pub fn invert(&self) -> Binary {
         let mut bits: Vec<char> = self.value.chars().collect();
         for i in 0..bits.len() {
             match bits[i] {
                 '0' => bits[i] = '1',
                 '1' => bits[i] = '0',
-                _ => panic!("invalid binary character"),
+                _ => panic!("invalid binary Binary"),
             }
         }
         let result: String = bits.iter().collect();
-        Binary::new(&result)
+        Binary::new(result, self.signal)
     }
 
-    fn pad_compare(self, other: Self) -> (String, String) {
+    fn pad_compare(&self, other: &Self) -> (Binary, Binary) {
         let max_len = self.value.len().max(other.value.len());
-        let x_padded = format!("{:0>width$}", self.value, width = max_len); // Preenche com '0' à esquerda
-        let y_padded = format!("{:0>width$}", other.value, width = max_len); // Preenche com '0' à esquerda
-        println!("x: {}, y: {}, max: {}", x_padded, y_padded, max_len);
+
+        let mut x_padded = self.clone();
+        let mut y_padded = other.clone();
+        x_padded.value = format!("{:0>width$}", x_padded.value, width = max_len);
+        y_padded.value = format!("{:0>width$}", y_padded.value, width = max_len);
         (x_padded, y_padded)
     }
-}
 
+    pub fn two_complement(&self) -> Binary {
+        if self.value == "0" {
+            return Binary::new("0".to_string(), '0');
+        }
+        let result = self.invert().next().change_signal();
+        result
+    }
+
+    fn change_signal(&self) -> Binary {
+        let new_signal = match self.signal {
+            '1' => '0',
+            '0' => '1',
+            _ => panic!("Erro de sinal"),
+        };
+        let new_value = &self.value;
+        return Binary::new(new_value.to_string(), new_signal);
+    }
+
+    fn greater_value(&self, other: &Self) -> (Binary, Binary, bool) {
+        match self.clone().value > other.clone().value {
+            true => (self.clone(), other.clone(), false),
+            false if self.clone().value < other.clone().value => {
+                (other.clone(), self.clone(), false)
+            }
+            _ => (self.clone(), other.clone(), true),
+        }
+    }
+
+    fn treat_zero(&self) -> Binary {
+        if self.not_zero() {
+            self.clone()
+        } else {
+            Binary::new("0".to_string(), '0')
+        }
+    }
+
+    fn not_zero(&self) -> bool {
+        !self.clone().value.chars().all(|bit| bit == '0')
+    }
+
+    fn trim(&self) -> Binary {
+        if self.not_zero() {
+            let mut trimmed = self.clone();
+            trimmed.value = trimmed.value.trim_start_matches('0').to_string();
+            trimmed
+        } else {
+            self.treat_zero()
+        }
+    }
+
+    fn addinng(self, other: &Self) -> Binary {
+        let mut result = String::new();
+        let (x, y) = Binary::pad_compare(&self, other);
+        let mut carry = false;
+
+        for (xb, yb) in x
+            .value
+            .chars()
+            .rev()
+            .zip(y.value.chars().rev())
+            .map(|(a, b)| {
+                (
+                    Binary::new(a.to_string(), '0'),
+                    Binary::new(b.to_string(), '0'),
+                )
+            })
+        {
+            let xor: Binary = xb.clone() ^ yb.clone();
+            let and: Binary = xb.clone() & yb.clone();
+
+            if xor.value == "1" {
+                if carry {
+                    result.push('0');
+                } else {
+                    result.push('1');
+                    carry = false;
+                }
+            } else {
+                if carry {
+                    result.push('1');
+                } else {
+                    result.push('0');
+                }
+                if and.value == '1'.to_string() {
+                    carry = true;
+                } else {
+                    carry = false;
+                }
+            }
+        }
+
+        if carry != false {
+            result.push('1');
+        }
+
+        Binary::new(result.chars().rev().collect(), '0')
+    }
+}
+// fn subtract(self, other: &Self) -> Binary {
+//     let mut result = String::new();
+//     let (x, y) = Binary::pad_compare(&self, other);
+//     let mut carry = false;
+
+//     for (xb, yb) in x.chars().rev().zip(y.chars().rev()).map(|(a, b)| {
+//         (
+//             Binary::new(a.to_string(), '0'),
+//             Binary::new(b.to_string(), '0'),
+//         )
+//     }) {
+//         let x = &xb.value;
+//         let y = &yb.value;
+//         let xor: &str =
+//             &(Binary::new(x.to_string(), '0') ^ Binary::new(y.to_string(), '0')).value;
+//         let and: &str =
+//             &(Binary::new(x.to_string(), '0') & Binary::new(y.to_string(), '0')).value;
+//         match xor {
+//             "1" => {
+//                 if carry {
+//                     result.push('0');
+//                 } else {
+//                     result.push('1');
+//                     carry = false;
+//                 }
+//             }
+//             "0" => {
+//                 if carry {
+//                     result.push('1');
+//                 } else {
+//                     result.push('0');
+//                 }
+//                 if and == '1'.to_string() {
+//                     carry = true;
+//                 } else {
+//                     carry = false;
+//                 }
+//             }
+//             _ => panic!("invalid binary character"),
+//         }
+//     }
+//     if carry != false {
+//         result.push('1');
+//     }
+//     Binary::new(result.chars().rev().collect(), '0')
+// }
+
+// fn module(self) -> Binary {
+//     Binary::new(self.value, '0')
+// }
+// }
+impl Default for Binary {
+    fn default() -> Self {
+        Binary::new("0".to_string(), '0')
+    }
+}
 impl BitAnd for Binary {
     type Output = Binary;
 
     fn bitand(self, other: Self) -> Self::Output {
-        let (x, y) = Binary::pad_compare(self, other);
+        let (x, y) = self.pad_compare(&other);
 
         let result: String = x
+            .value
             .chars()
-            .zip(y.chars())
+            .zip(y.value.chars())
             .map(|(a, b)| if a == '1' && b == '1' { '1' } else { '0' })
             .collect();
 
-        Binary::new(&result)
+        Binary::new(result, self.signal)
     }
 }
-
 impl BitOr for Binary {
     type Output = Binary;
     fn bitor(self, other: Self) -> Self::Output {
-        let (x, y) = Binary::pad_compare(self, other);
+        let (x, y) = self.pad_compare(&other);
 
         let result: String = x
+            .value
             .chars()
-            .zip(y.chars())
+            .zip(y.value.chars())
             .map(|(a, b)| if a == '1' || b == '1' { '1' } else { '0' })
             .collect();
 
-        Binary::new(&result)
+        Binary::new(result, self.signal)
     }
 }
-
 impl BitXor for Binary {
     type Output = Binary;
     fn bitxor(self, other: Self) -> Self::Output {
-        let (x, y) = Binary::pad_compare(self, other);
+        let (x, y) = self.pad_compare(&other);
 
         let result: String = x
+            .value
             .chars()
-            .zip(y.chars())
+            .zip(y.value.chars())
             .map(|(a, b)| if a != b { '1' } else { '0' })
             .collect();
 
-        Binary::new(&result)
+        Binary::new(result, self.signal)
     }
 }
 
 impl Add for Binary {
     type Output = Binary;
     fn add(self, other: Self) -> Self::Output {
-        let mut result = String::new();
-        let (x, y) = Binary::pad_compare(self, other);
-        let mut carry = false;
-
-        for (xb, yb) in x
-            .chars()
-            .rev()
-            .zip(y.chars().rev())
-            .map(|(a, b)| (Binary::new(&a.to_string()), Binary::new(&b.to_string())))
-        {
-            let xor: &str = &(Binary::new(&xb.value) ^ Binary::new(&yb.value)).value;
-            let and: &str = &(Binary::new(&xb.value) & Binary::new(&yb.value)).value;
-
-            match xor {
-                "1" => {
-                    if carry {
-                        result.push('0');
-                    } else {
-                        result.push('1');
-                        carry = false;
-                    }
-                }
-                "0" => {
-                    if carry {
-                        result.push('1');
-                    } else {
-                        result.push('0');
-                        carry = false;
-                    }
-                    if and == '1'.to_string() {
-                        carry = true;
-                    } else {
-                        result.push('1');
-                        carry = false;
-                    }
-                }
-                _ => panic!("invalid binary character"),
+        match (self.signal, other.signal) {
+            ('0', '0') => {
+                let (x, y) = self.pad_compare(&other);
+                x.addinng(&y)
             }
-        }
-        if carry != false {
-            result.push('1');
-        }
+            ('0', '1') | ('1', '0') => {
+                let (x, y, equal) = self.greater_value(&other);
+                if equal {
+                    return Binary::new("0".to_string(), '0');
+                }
+                let (x_padded, y_padded) = x.pad_compare(&y);
+                let not_treated_result = x_padded.addinng(&y_padded.two_complement());
+                let (_, value) = not_treated_result.value.split_at(1);
 
-        Binary::new(&result)
+                Binary::new(value.to_string(), x.signal)
+            }
+            ('1', '1') => {
+                let (x, y) = self.two_complement().pad_compare(&other.two_complement());
+                x.addinng(&y).two_complement()
+            }
+            _ => panic!(),
+        }
+        .treat_zero()
     }
 }
+impl Sub for Binary {
+    type Output = Binary;
+    fn sub(self, other: Self) -> Self::Output {
+        let (x, y) = self.pad_compare(&other);
+        x + y.change_signal()
+    }
+}
+impl Mul for Binary {
+    type Output = Binary;
+
+    fn mul(self, other: Self) -> Self::Output {
+        let length = other.value.len() - 1;
+        let mut r = other
+            .value
+            .char_indices()
+            .rev()
+            .map(|(i, c)| {
+                let aux = &self.value;
+                match c {
+                    '1' => {
+                        Binary::new(String::from(aux.to_string() + &"0".repeat(length - i)), '0')
+                    }
+                    _ => Binary::new(String::from("0".to_string()), '0'),
+                }
+                // let aux_str = self.value.clone();
+            })
+            .reduce(|acc, b| acc + b)
+            .unwrap_or_default();
+        if self.signal != other.signal {
+            r = r.change_signal()
+        }
+        return r;
+    }
+}
+
+impl Ord for Binary {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.cached_value
+            .cmp(&other.cached_value)
+            .then(self.signal.cmp(&other.signal))
+    }
+}
+impl PartialOrd for Binary {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for Binary {
+    fn eq(&self, other: &Self) -> bool {
+        self.trim().get_binary() == other.trim().get_binary()
+    }
+}
+impl Eq for Binary {}
+
+pub struct BinaryFactory;
+impl BinaryFactory {
+    pub fn create(binary: &str) -> Option<Binary> {
+        let mut signal: &str;
+        let value: String;
+
+        let aux: &str;
+        (signal, aux) = binary.split_at(1);
+
+        match signal {
+            "-" => {
+                signal = "1";
+                value = aux.to_string();
+            }
+            _ => {
+                signal = "0";
+                value = binary.to_string();
+            }
+        };
+        if Self::validate(&value).is_ok() {
+            // Convert Result to Option using `.ok()`
+            Some(Binary::new(value, signal.chars().next().unwrap()))
+        } else {
+            None
+        }
+    }
+    fn validate(value: &str) -> Result<(), &str> {
+        if value.chars().all(|c| c == '0' || c == '1') && !value.is_empty() {
+            Ok(())
+        } else {
+            Err("Not a valid binary!")
+        }
+    }
+}
+
+// M + m = M + m
+// -M + (-m) = -(M + m)
+// M.s == m.s = (M + m).s
+
+// M + (- m) = M - m
+// -M + m = -(M - m)
+// M.s != m.s = (M - m).s(M)
+
+// 101 - 1
+
+// 101
+// 111
+// 100
+
+// 111 - 11 = 100  (7 - 3 = 4)
+
+// 0011 -> 1100 -> 1101
+// 0111 + 1101 = (1)0100
+// 111 + 101 = (1)100
+
+// 111 +  (-11) = 100  (7 + (-3)  = 4)
+
+// 0011 -> 1100 -> 1101
+// 0111 + 1101 = (1)0100
+// 111 + 101 = (1)100
+
+// -1001 + (-0111) = -10000  ( -9 + (-7)  = -16)
+
+// 1. 11001 -> 00110 -> 00111
+// 2. 10111 -> 01000 -> 01001
+// 00111 + 01001 = 010000 -> 110000
+// 111 + 101 = (1)100
+
+// 11 - 10 = 1  (3 - 2 = 1)
+
+// 110 -> 001 -> 010
+// 11 + 10 = (1)01 -> 001
+
+// 1 - 1 = 1  (1 + (-1) = 1)
+
+// 110 -> 001 -> 010
+// 11 + 10 = (1)01 -> 001
+
+// 1111 - 11 = 1111 + (-11)
+
+// +0 | 0000
+// +1 | 0001
+// +2 | 0010
+// +3 | 0011
+// +4 | 0100
+// +5 | 0101
+// +6 | 0110
+// +7 | 0111
+// -8 | 1000
+// -7 | 1001
+// -6 | 1010
+// -5 | 1011
+// -4 | 1100
+// -3 | 1101
+// -2 | 1110
+// -1 | 1111
+
+//          10
+//          11
+//          __
+//          10
+//         10
+//         101
