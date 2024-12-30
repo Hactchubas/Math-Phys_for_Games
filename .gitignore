@@ -1,0 +1,37 @@
+# Compiled output
+/target/
+
+# Rust/Cargo related files
+**/*.rs.bk
+**/*.rs.swp
+Cargo.lock
+
+# Files created by running a server or development tools
+*.log
+*.tmp
+
+# Dependency folders
+node_modules/
+*.dep
+
+# Debugging and profiling artifacts
+*.profraw
+*.dSYM/
+
+# Generated files
+*.rs.bk
+*.generated.rs
+/*.config
+
+# Editor-specific
+.vscode/
+.idea/
+*.iml
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Specific to webservers
+.env
+.env.*
