@@ -180,9 +180,9 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(colisao)
             .service(decomposicao_vetores),
     )
-    .service(view_sum)
-    .service(view_reaction)
-    .service(view_colision)
+    // .service(view_sum)
+    // .service(view_reaction)
+    // .service(view_colision)
     .service(app_home);
 }
 
