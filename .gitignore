@@ -1,5 +1,12 @@
-# Compiled output
+git # Compiled output
+
+
 /target/
+
+/Trabalho final/hit_box/target/
+/A1/Bases_Numericas/target/
+/A2/vector-operations/target/
+
 
 # Rust/Cargo related files
 **/*.rs.bk
@@ -35,3 +42,4 @@ Thumbs.db
 # Specific to webservers
 .env
 .env.*
+A2/vector-operations/target/.rustc_info.json
