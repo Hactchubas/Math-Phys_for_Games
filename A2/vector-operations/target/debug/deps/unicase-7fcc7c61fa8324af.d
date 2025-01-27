@@ -1,0 +1,10 @@
+C:\Users\kauam\Documents\Studying\UFC\SMD\Cadeiras S6\Math&Phys_for_Games\A2 - Vetores\vector-operations\target\debug\deps\libunicase-7fcc7c61fa8324af.rmeta: C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src/lib.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\ascii.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\mod.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\map.rs
+
+C:\Users\kauam\Documents\Studying\UFC\SMD\Cadeiras S6\Math&Phys_for_Games\A2 - Vetores\vector-operations\target\debug\deps\libunicase-7fcc7c61fa8324af.rlib: C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src/lib.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\ascii.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\mod.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\map.rs
+
+C:\Users\kauam\Documents\Studying\UFC\SMD\Cadeiras S6\Math&Phys_for_Games\A2 - Vetores\vector-operations\target\debug\deps\unicase-7fcc7c61fa8324af.d: C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src/lib.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\ascii.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\mod.rs C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\map.rs
+
+C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src/lib.rs:
+C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\ascii.rs:
+C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\mod.rs:
+C:\Users\kauam\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicase-2.8.1\src\unicode\map.rs:
