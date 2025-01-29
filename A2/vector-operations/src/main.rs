@@ -5,12 +5,12 @@ use actix_files::NamedFile;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::Deserialize;
 mod structs;
-use structs::vector::Vector;
+use structs::{elements::LineSegment, vector::Vector};
 
 #[get("/")]
 async fn app_home() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open(PathBuf::from(
-        "./static/colision-visualization.html",
+        "./static/intersection-visualization.html",
     ))?)
 }
 
@@ -139,6 +139,23 @@ async fn normal_segmento(data: web::Json<LineSegmentsNormalRequest>) -> impl Res
     }
 }
 
+// Endpoint para encontrar segmentos que intersectam
+#[post("/intersectam")]
+async fn segmentos_intersectam(data: web::Json<FindIntersectingRequest>) -> impl Responder {
+    let segments = data.segments.to_owned();
+    let line_segments: Vec<LineSegment> = segments
+        .iter()
+        .map(|(x, y)| LineSegment::new(x.to_owned(), y.to_owned()))
+        .collect();
+
+    let intersectin_segments: Vec<bool> = line_segments
+        .iter()
+        .map(|item| line_segments.iter().filter(|&x| x.intersects(item)).count() >= 1)
+        .collect();
+
+    HttpResponse::Ok().json(intersectin_segments)
+}
+
 // Endpoint para visualização da soma
 #[get("/soma")]
 async fn view_sum() -> actix_web::Result<NamedFile> {
@@ -152,6 +169,14 @@ async fn view_sum() -> actix_web::Result<NamedFile> {
 async fn view_reaction() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open(PathBuf::from(
         "./static/reaction-visualization.html",
+    ))?)
+}
+
+// Endpoint para visualização da intersecção de segmentos de reta
+#[get("/interseccao")]
+async fn view_intersection() -> actix_web::Result<NamedFile> {
+    Ok(NamedFile::open(PathBuf::from(
+        "./static/intersection-visualization.html",
     ))?)
 }
 
@@ -176,11 +201,13 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(reacao_vetores)
             .service(normal_segmento)
             .service(intersecsao_segmento)
+            .service(segmentos_intersectam)
             .service(colisao)
             .service(decomposicao_vetores),
     )
     .service(view_sum)
     .service(view_reaction)
+    .service(view_intersection)
     .service(view_colision)
     .service(app_home);
 }
@@ -231,4 +258,9 @@ struct LineSegmentsIntersectionRequest {
 #[derive(Deserialize)]
 struct LineSegmentsNormalRequest {
     segment: (Vector, Vector),
+}
+
+#[derive(Deserialize)]
+struct FindIntersectingRequest {
+    segments: Vec<(Vector, Vector)>,
 }

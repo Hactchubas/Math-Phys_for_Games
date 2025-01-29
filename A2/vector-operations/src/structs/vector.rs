@@ -243,3 +243,17 @@ impl Mul<f64> for &Vector {
         Vector::new(result)
     }
 }
+
+impl Eq for &Vector {}
+
+impl PartialEq for &Vector {
+    fn eq(&self, other: &Self) -> bool {
+        let (new_self, new_other) = self.equalize_dimensions(other);
+        new_self
+            .dimensions
+            .iter()
+            .zip(new_other.dimensions.iter())
+            .map(|(s_di, o_di)| s_di == o_di)
+            .all(|v| v)
+    }
+}
