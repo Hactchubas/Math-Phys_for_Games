@@ -21,7 +21,32 @@ impl LineSegment {
         &self.y - &self.x
     }
 
-    pub fn intersects(&self, other: &Self) -> bool {
+    fn intersection_vec(&self, other: &Self) -> Option<Vector> {
+        let c_vec = other.x.to_owned();
+        let d_vec = other.y.to_owned();
+        let b_vec = self.y.to_owned();
+        let a_vec = self.x.to_owned();
+
+        let cd = &c_vec - &d_vec;
+
+        if let Some(normal) = cd.normal_vec() {
+            match (
+                (&c_vec - &a_vec).dot_product(&normal),
+                (&b_vec - &a_vec).dot_product(&normal),
+            ) {
+                (Some(n), Some(d)) => {
+                    let t = n / d;
+
+                    Some((&(&b_vec - &a_vec) * t) + &a_vec)
+                }
+                (_, _) => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn intersects(&self, other: &Self) -> Option<Vector> {
         let c_vec = other.x.to_owned();
         let d_vec = other.y.to_owned();
         let b_vec = self.y.to_owned();
@@ -41,12 +66,12 @@ impl LineSegment {
                     (Some(cd_x_ca), Some(cd_x_cb))
                         if (cd_x_ca.signal_in_r(3) ^ cd_x_cb.signal_in_r(3)) =>
                     {
-                        true
+                        self.intersection_vec(other)
                     }
-                    _ => false,
+                    _ => None,
                 }
             }
-            _ => false,
+            _ => None,
         }
     }
 }

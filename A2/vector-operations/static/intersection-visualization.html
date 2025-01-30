@@ -112,39 +112,16 @@
     <section class="content">
         <aside>
             <div class="intro">
-                <h2>Vector Reaction</h2>
-                <p>Drag the block to change the normal vector direction.</p>
+                <h2>Segment intersection</h2>
+                <p>Use this to have a visual representation of segments that intersect</p>
+                <p>Press, move and release to draw a new segment.</p>
             </div>
 
 
             <div class="controls">
-                <button onclick="randomSegments()">Randomize segments</button>
-                <button onclick="clearSegments()">Limpar</button>
+                <button onclick="randomSegments()">Randomize +5 segments</button>
+                <button onclick="clearSegments()">Clear</button>
             </div>
-
-            <script>
-                // Initialize variables to store slider values
-                let alfa = 1;
-                let beta = 1;
-
-                // Get references to the sliders and value displays
-                const alfaSlider = document.getElementById('alfa');
-                const betaSlider = document.getElementById('beta');
-                const alfaValueDisplay = document.getElementById('alfaValue');
-                const betaValueDisplay = document.getElementById('betaValue');
-
-                // Update alfa value when the slider changes
-                alfaSlider.addEventListener('input', function () {
-                    alfa = parseFloat(alfaSlider.value);
-                    alfaValueDisplay.textContent = alfa.toFixed(2);  // Display the alfa value with two decimal places
-                });
-
-                // Update beta value when the slider changes
-                betaSlider.addEventListener('input', function () {
-                    beta = parseFloat(betaSlider.value);
-                    betaValueDisplay.textContent = beta.toFixed(2);  // Display the beta value with two decimal places
-                });
-            </script>
 
         </aside>
 
@@ -183,7 +160,8 @@
 
                     if (drawingMode && startPoint) {
                         let previewVector = createVector(mouseXC, mouseYC);
-                        seta(
+                        stroke(0, 0, 0)
+                        line(
                             startPoint.x, startPoint.y,
                             previewVector.x, previewVector.y,
                             color(150)
@@ -198,18 +176,47 @@
 
                 function drawSegments() {
                     for (let segmentIndex in segments) {
+
+                        textSize(14);
+                        let midX = (segments[segmentIndex].s.x + segments[segmentIndex].e.x) / 2;
+                        let midY = (segments[segmentIndex].s.y + segments[segmentIndex].e.y) / 2;
+
+                        let strokeColor = null
+                        let fillColor = null
                         if (intersectingSegments[segmentIndex]) {
-                            stroke(200, 100, 100)
+                            strokeColor = [200, 100, 100]
+                            fillColor = [200, 100, 100]
+
+                            for (let intersecPoint of intersectingSegments[segmentIndex]) {
+                                stroke(...strokeColor)
+                                fill(...fillColor)
+                                circle(intersecPoint.dimensions[0], intersecPoint.dimensions[1],
+                                    5)
+                            }
                         }
                         else {
-                            stroke(100, 100, 100, 100)
+                            strokeColor = [100, 100, 100, 100]
+                            fillColor = [100, 100, 100, 100]
                         }
+
+                        stroke(...strokeColor)
+                        fill(...fillColor)
                         line(
                             segments[segmentIndex].s.x,
                             segments[segmentIndex].s.y,
                             segments[segmentIndex].e.x,
                             segments[segmentIndex].e.y
                         )
+
+
+                        noStroke();
+                        fill(255);
+                        rect(midX - 10, midY - 10, 20, 20);
+
+                        stroke(...strokeColor)
+                        fill(...fillColor)
+                        texto(segmentIndex, midX, midY);
+
                     }
                 }
 
@@ -230,6 +237,25 @@
                         },
                         body: JSON.stringify({ segments: data })
                     });
+                }
+
+                function randomSegments() {
+                    for (let i = 0; i < 5; i++) {
+                        segments.push(
+                            new Segment(
+                                p5.Vector.random2D().mult(random(50, 300)),
+                                p5.Vector.random2D().mult(random(50, 300))
+                            )
+                        );
+                    }
+                    findIntersected()
+                        .then(res => {
+                            return res.json()
+                        })
+                        .then(res => {
+                            intersectingSegments = res
+                        })
+                        .catch(err => console.log(err))
                 }
 
             </script>
@@ -360,6 +386,7 @@
 
                 function clearSegments() {
                     segments = []
+                    intersectingSegments = []
                 }
 
             </script>

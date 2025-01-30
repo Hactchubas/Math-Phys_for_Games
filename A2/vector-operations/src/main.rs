@@ -17,7 +17,7 @@ async fn app_home() -> actix_web::Result<NamedFile> {
 // Endpoint para soma de vetores
 #[post("/soma")]
 async fn soma_vetores(data: web::Json<VectorOperationRequest>) -> impl Responder {
-    let resultado = data.v1.clone() + data.v2.clone();
+    let resultado = &data.v1 + &&data.v2;
     HttpResponse::Ok().json(resultado)
 }
 
@@ -97,7 +97,7 @@ async fn intersecsao_segmento(data: web::Json<LineSegmentsIntersectionRequest>) 
     let segment_a = data.segment_a.0.to_line_segment(&data.segment_a.1);
     let segment_b = data.segment_b.0.to_line_segment(&data.segment_b.1);
 
-    if segment_a.intersects(&segment_b) {
+    if let Some(_) = segment_a.intersects(&segment_b) {
         HttpResponse::Ok().json(true)
     } else {
         HttpResponse::Ok().json(false)
@@ -110,7 +110,7 @@ async fn colisao(data: web::Json<LineSegmentsIntersectionRequest>) -> impl Respo
     let segment_a = data.segment_a.0.to_line_segment(&data.segment_a.1);
     let segment_b = data.segment_b.0.to_line_segment(&data.segment_b.1);
 
-    if segment_a.intersects(&segment_b) {
+    if let Some(_) = segment_a.intersects(&segment_b) {
         if let Some(normal) = segment_b.get_normal() {
             let res = segment_a
                 .vec_from_seg()
@@ -148,9 +148,25 @@ async fn segmentos_intersectam(data: web::Json<FindIntersectingRequest>) -> impl
         .map(|(x, y)| LineSegment::new(x.to_owned(), y.to_owned()))
         .collect();
 
-    let intersectin_segments: Vec<bool> = line_segments
+    let intersectin_segments: Vec<Option<Vec<Vector>>> = line_segments
         .iter()
-        .map(|item| line_segments.iter().filter(|&x| x.intersects(item)).count() >= 1)
+        .map(|item| {
+            let intersect_vecs: Vec<Vector> = line_segments
+                .iter()
+                .filter_map(|x| {
+                    if let Some(interc_vec) = &x.intersects(&item) {
+                        Some(interc_vec.to_owned())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if intersect_vecs.len() > 0 {
+                Some(intersect_vecs)
+            } else {
+                None
+            }
+        })
         .collect();
 
     HttpResponse::Ok().json(intersectin_segments)

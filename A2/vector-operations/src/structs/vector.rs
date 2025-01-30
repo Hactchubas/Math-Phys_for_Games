@@ -158,15 +158,16 @@ impl Vector {
     }
 
     pub fn normal_vec(&self) -> Option<Self> {
-        let mut dims = vec![0.0; self.cardinality() - 1];
-        dims.insert(0, 1.0);
-        let other = &Vector::new(dims);
-        if let Some((vn, vp)) = self.decompose(other) {
-            let n = vp - vn;
-            Some(n.unit())
-        } else {
-            None
-        }
+        // let mut dims = vec![0.0; self.cardinality() - 1];
+        // dims.insert(0, 1.0);
+        // let other = &Vector::new(dims);
+        // if let Some((vn, vp)) = self.decompose(other) {
+        //     let n = vp - vn;
+        //     Some(n.unit())
+        // } else {
+        //     None
+        // }
+        Some(Vector::new(vec![-self.dimensions[1], self.dimensions[0]]))
     }
 }
 
@@ -196,6 +197,7 @@ impl Add<Self> for Vector {
         self + &other
     }
 }
+
 
 impl Sub<Self> for &Vector {
     type Output = Vector;
@@ -244,9 +246,8 @@ impl Mul<f64> for &Vector {
     }
 }
 
-impl Eq for &Vector {}
 
-impl PartialEq for &Vector {
+impl PartialEq for Vector {
     fn eq(&self, other: &Self) -> bool {
         let (new_self, new_other) = self.equalize_dimensions(other);
         new_self
@@ -255,5 +256,14 @@ impl PartialEq for &Vector {
             .zip(new_other.dimensions.iter())
             .map(|(s_di, o_di)| s_di == o_di)
             .all(|v| v)
+    }
+}
+
+impl Eq for Vector {}
+impl std::hash::Hash for Vector {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        for dim in &self.dimensions {
+            state.write_u64(dim.to_bits());
+        }
     }
 }
