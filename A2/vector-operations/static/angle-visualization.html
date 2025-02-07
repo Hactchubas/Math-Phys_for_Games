@@ -102,14 +102,13 @@
 </head>
 
 <body>
-
     <!-- Navigation Bar -->
     <nav>
         <a href="/">Home</a>
         <a href="/soma">Vector Sum</a>
         <!-- <a href="/reacao">Vector Reflection</a> -->
         <a href="/interseccao">Segments Intersection</a>
-        <!-- <a href="/colisao">Elemente colision</a> -->
+        <!-- <a href="/colisao">Element colision</a> -->
         <a href="/angles">Angles and pseudoangles</a>
     </nav>
 
@@ -117,160 +116,206 @@
     <section class="content">
         <aside>
             <div class="intro">
-                <h2>Segment intersection</h2>
-                <p>Use this to have a visual representation of segments that intersect</p>
-                <p>Press, move and release to draw a new segment.</p>
+                <h2>Angles and pseudoangles</h2>
+                <p>Press, move and release to draw a new vector from origin.</p>
             </div>
-
 
             <div class="controls">
-                <button onclick="randomSegments()">Randomize +5 segments</button>
-                <button onclick="clearSegments()">Clear</button>
+                <button onclick="clearVectors()">Resetar</button>
             </div>
-
         </aside>
 
         <section id="canvas-destination">
-
             <script>
                 let baseUrl = 'http://127.0.0.1:8080/api';
 
-                let segments = []
-                let intersectingSegments = []
-                class Segment {
-                    constructor(s, e) {
-                        this.s = s
-                        this.e = e
-                    }
-                }
+                let vectors = [];
+                let angles = []
+                let resultVector = null;
+                let drawingMode = false;
+                let endPoint = null;
+                let gridSize = 50;
 
-                /// guardam a posição do mouse no plano cartesiano
+
+
                 var mouseXC, mouseYC = 0
 
                 function setup() {
-                    let myCanvas = createCanvas(800, 600);
+                    let myCanvas = createCanvas(900, 600);
                     myCanvas.parent("#canvas-destination");
-                    frameRate(20);
+                    frameRate(60);
                     textAlign(CENTER, CENTER);
-                    let w2 = width / 15
-                    let h2 = height / 15
-
-
                 }
-
 
                 function draw() {
                     goCartesian()
 
-
-                    if (drawingMode && startPoint) {
+                    if (drawingMode && endPoint) {
                         let previewVector = createVector(mouseXC, mouseYC);
                         stroke(0, 0, 0)
-                        line(
-                            startPoint.x, startPoint.y,
+                        seta(
+                            0, 0,
                             previewVector.x, previewVector.y,
                             color(150)
                         );
                     }
 
-
-                    drawSegments()
-
-
-                }
-
-                function drawSegments() {
-                    for (let segmentIndex in segments) {
-
-                        textSize(14);
-                        let midX = (segments[segmentIndex].s.x + segments[segmentIndex].e.x) / 2;
-                        let midY = (segments[segmentIndex].s.y + segments[segmentIndex].e.y) / 2;
-
-                        let strokeColor = null
-                        let fillColor = null
-                        if (intersectingSegments[segmentIndex]) {
-                            strokeColor = [200, 100, 100]
-                            fillColor = [200, 100, 100]
-
-                            for (let intersecPoint of intersectingSegments[segmentIndex]) {
-                                stroke(...strokeColor)
-                                fill(...fillColor)
-                                circle(intersecPoint.dimensions[0], intersecPoint.dimensions[1],
-                                    5)
-                            }
-                        }
-                        else {
-                            strokeColor = [100, 100, 100, 100]
-                            fillColor = [100, 100, 100, 100]
-                        }
-
-                        stroke(...strokeColor)
-                        fill(...fillColor)
-                        line(
-                            segments[segmentIndex].s.x,
-                            segments[segmentIndex].s.y,
-                            segments[segmentIndex].e.x,
-                            segments[segmentIndex].e.y
-                        )
-                    }
-                }
-
-                async function findIntersected() {
-                    let data = []
-                    for (let segment of segments) {
-                        data.push(
-                            [
-                                { dimensions: [segment.s.x, segment.s.y] },
-                                { dimensions: [segment.e.x, segment.e.y] }
-                            ]
-                        )
-                    }
-                    return fetch('http://127.0.0.1:8080/api/intersectam', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ segments: data })
-                    });
-                }
-
-                function randomSegments() {
-                    for (let i = 0; i < 5; i++) {
-                        segments.push(
-                            new Segment(
-                                p5.Vector.random2D().mult(random(50, 300)),
-                                p5.Vector.random2D().mult(random(50, 300))
-                            )
-                        );
-                    }
-                    findIntersected()
-                        .then(res => {
-                            return res.json()
-                        })
-                        .then(res => {
-                            intersectingSegments = res
-                        })
-                        .catch(err => console.log(err))
+                    drawVectors()
+                    drawAngles()
                 }
 
             </script>
 
+            <script>
+                function drawAngles() {
+
+                    for (let [i, angle] of angles.entries()) {
+                        let closers = angle
+                            .filter(angleTo => angleTo[0].Ok && (angleTo[0].Ok >= 1 || angleTo[0].Ok <= -1))
+                            .reduce(([neg, pos], angleTo) => {
+                                if (angleTo[0].Ok < 0 && (neg === null || Math.abs(angleTo[0].Ok) < Math.abs(neg[0].Ok))) {
+                                    neg = angleTo;  // Atualiza o negativo mais próximo de zero
+                                } else if (angleTo[0].Ok > 0 && (pos === null || Math.abs(angleTo[0].Ok) < Math.abs(pos[0].Ok))) {
+                                    pos = angleTo;  // Atualiza o positivo mais próximo de zero
+                                }
+                                return [neg, pos];
+                            }, [null, null]);
+                        for (let [j, closer] of closers.entries()) {
+                            if(!closer) continue
+                            let other = createVector(...closer[1].dimensions)
+                            let angleBetween = closer[0].Ok
+                            let selfAngle = vectors[i].heading()
+                            let otherAngle = other.heading()
+                            let distParam = vectors[i].x  + vectors[i].y + other.x + other.y
+                            noFill();
+                            let hue = map(i, 0, vectors.length, 0, 360);
+                            colorMode(HSB);
+                            stroke(hue, 80, 80);
+                            let dist = map(distParam, -1000, 1000, 50, -50, true) + 200
+                            if (angleBetween < 0) {
+                                let midAngle = selfAngle - radians(angleBetween)/2
+                                let textPos = p5.Vector.fromAngle(midAngle).mult(dist - 50);
+                                textSize(10)
+                                strokeWeight(1)
+                                texto(Math.abs(angleBetween.toFixed(2)) + "º", textPos.x, textPos.y)
+                                arc(0, 0, dist , dist, selfAngle, selfAngle - radians(angleBetween));
+                            } else {
+                                arc(0, 0, dist , dist, otherAngle, otherAngle + radians(angleBetween));
+                            }
+                            colorMode(RGB);
+                        }
+
+                        //for (let [j, angleTo] of angle.entries()) {
+                        //    if (angleTo[0].Ok && (angleTo[0].Ok >= 1 || angleTo[0].Ok <= -1)) {
+                        //        let other = createVector(...angleTo[1].dimensions)
+                        //        let angleBetween = angleTo[0].Ok
+                        //
+                        //        noFill();
+                        //        let hue = map(i, 0, vectors.length, 0, 360);
+                        //        colorMode(HSB);
+                        //        stroke(hue, 80 + j, 80);
+                        //        let dist = j * 15 + i * 10
+                        //        if (angleBetween < 0) {
+                        //            arc(0, 0, dist, dist, vectors[i].heading(), vectors[i].heading() - radians(angleBetween));
+                        //        } else {
+                        //            arc(0, 0, dist, dist, other.heading(), other.heading() + radians(angleBetween));
+                        //        }
+                        //        colorMode(RGB);
+                        //    }
+                        //}
+
+                    }
+                }
+
+                function findAngles() {
+                    let data = []
+                    for (let vector of vectors) {
+                        data.push(
+                            { dimensions: [vector.x, vector.y] }
+                        )
+                    }
+                    return fetch('http://127.0.0.1:8080/api/angulos', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ vectors: data, method: 1 })
+                    });
+                }
+
+                function drawVectors() {
+                    for (let [i, vector] of vectors.entries()) {
+                        let hue = map(i, 0, vectors.length, 0, 360);
+                        colorMode(HSB)
+                        stroke(hue, 80, 80);
+                        seta(
+                            0, 0,
+                            vector.x, vector.y
+
+                        )
+                        colorMode(RGB);
+                    }
+                }
+                function mousePressed() {
+                    if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+                        drawingMode = true;
+                        endPoint = createVector(mouseXC, mouseYC);
+                    }
+                }
+                function mouseReleased() {
+                    if (drawingMode && endPoint) {
+                        let endPoint = createVector(mouseXC, mouseYC);
+                        vectors.push(endPoint);
+                        drawingMode = false;
+                        endPoint = null;
+
+                        findAngles()
+                            .then(res => {
+                                return res.json()
+                            })
+                            .then(res => {
+                                angles = res
+                            })
+                            .catch(err => console.log(err))
+
+                    }
+                }
+
+                function clearVectors() {
+                    vectors = []
+                    angles = []
+                }
+            </script>
+
 
             <script>
-                let startPoint = null;
-                let drawingMode = false;
-
                 function goCartesian() {
                     background(255)
+                    stroke(200);
+
 
                     mouseXC = mouseX - width / 2
                     mouseYC = height / 2 - mouseY
 
+                    strokeWeight(2);
                     colore(0, 0, 0, 100)
                     seta(0, height / 2, width, height / 2)
                     seta(width / 2, height, width / 2, 0)
 
                     translate(width / 2, height / 2)
+                    let w2 = width * 5 / 30
+                    let h2 = height * 5 / 20
+                    line(-w2, h2, w2, h2)
+                    line(w2, h2, w2, -h2)
+                    line(w2, -h2, -w2, -h2)
+                    line(-w2, -h2, -w2, h2)
+
+
+                    strokeWeight(0.5);
+                    for (let i = -width / 2, j = -height / 2; i <= width / 2; i += width / 30, j += height / 20) {
+                        line(i, -height / 2, i, height / 2);
+                        line(-width / 2, j, width / 2, j);
+                    }
                     scale(1, -1, 1)
 
                     strokeWeight(5)
@@ -348,41 +393,7 @@
                         x2 - 5 * vx - 2 * ux, y2 - 5 * vy - 2 * uy)
                 }
 
-                function mousePressed() {
-                    if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
-                        drawingMode = true;
-                        startPoint = createVector(mouseXC, mouseYC);
-                        line(
-                            startPoint.x, startPoint.y,
-                        )
-                    }
-                }
 
-                function mouseReleased() {
-                    if (drawingMode && startPoint) {
-                        let endPoint = createVector(mouseXC, mouseYC);
-                        let newSegemnt = new Segment(endPoint, startPoint);
-                        segments.push(newSegemnt);
-
-                        findIntersected()
-                            .then(res => {
-                                return res.json()
-                            })
-                            .then(res => {
-                                intersectingSegments = res
-                            })
-                            .catch(err => console.log(err))
-
-
-                        drawingMode = false;
-                        startPoint = null;
-                    }
-                }
-
-                function clearSegments() {
-                    segments = []
-                    intersectingSegments = []
-                }
 
             </script>
         </section>

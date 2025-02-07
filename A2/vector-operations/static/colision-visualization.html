@@ -102,12 +102,16 @@
 </head>
 
 <body>
-
+    <!-- Navigation Bar -->
     <nav>
         <a href="/">Home</a>
         <a href="/soma">Vector Sum</a>
-        <a href="/reacao">Vector Reaction</a>
+        <!-- <a href="/reacao">Vector Reflection</a> -->
+        <a href="/interseccao">Segments Intersection</a>
+        <!-- <a href="/colisao">Element colision</a> -->
+        <a href="/angles">Angles and pseudoangles</a>
     </nav>
+
 
     <section class="content">
         <aside>
@@ -223,7 +227,7 @@
                 function draw() {
                     goCartesian()
 
-                    
+
                     let { vel, pos } = character
                     updateVel(character)
                     updatePos(character)
@@ -285,7 +289,7 @@
                                             }
                                             //stopDraw = true
                                             lastEdge = index
-                                        } 
+                                        }
                                     })
                             })
                             .catch(e => {

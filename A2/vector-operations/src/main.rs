@@ -10,7 +10,7 @@ use structs::{elements::LineSegment, vector::Vector};
 #[get("/")]
 async fn app_home() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open(PathBuf::from(
-        "./static/intersection-visualization.html",
+        "./static/index.html",
     ))?)
 }
 
@@ -172,6 +172,33 @@ async fn segmentos_intersectam(data: web::Json<FindIntersectingRequest>) -> impl
     HttpResponse::Ok().json(intersectin_segments)
 }
 
+// Endpoint para encontrar angulos entre vetores
+#[post("/angulos")]
+async fn angulos(data: web::Json<FindAnglesRequest>) -> impl Responder {
+    let vectors = data.vectors.to_owned();
+    // let method = data.method.to_owned();
+
+    let angles: Vec<Vec<(Result<f64, &str>, Vector)>> = vectors
+        .iter()
+        .map(|item| {
+            vectors
+                .iter()
+                .filter_map(|x| Some((
+                        // x.angle_between(&item, 1 as usize),
+                        x.angle_between(&item, 3 as usize),
+                        x.to_owned()
+                    ))
+                )
+                .collect()
+        })
+        .collect();
+
+    HttpResponse::Ok().json(angles)
+}
+
+///  End points de visualização
+///
+///
 // Endpoint para visualização da soma
 #[get("/soma")]
 async fn view_sum() -> actix_web::Result<NamedFile> {
@@ -204,6 +231,14 @@ async fn view_colision() -> actix_web::Result<NamedFile> {
     ))?)
 }
 
+// Endpoint para visualização da de ângulos
+#[get("/angles")]
+async fn view_angles() -> actix_web::Result<NamedFile> {
+    Ok(NamedFile::open(PathBuf::from(
+        "./static/angle-visualization.html",
+    ))?)
+}
+
 // Configuração das rotas
 fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -219,12 +254,14 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(intersecsao_segmento)
             .service(segmentos_intersectam)
             .service(colisao)
+            .service(angulos)
             .service(decomposicao_vetores),
     )
     .service(view_sum)
     .service(view_reaction)
     .service(view_intersection)
     .service(view_colision)
+    .service(view_angles)
     .service(app_home);
 }
 
@@ -279,4 +316,10 @@ struct LineSegmentsNormalRequest {
 #[derive(Deserialize)]
 struct FindIntersectingRequest {
     segments: Vec<(Vector, Vector)>,
+}
+
+#[derive(Deserialize)]
+struct FindAnglesRequest {
+    vectors: Vec<Vector>,
+    method: usize,
 }
