@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+
+</head>
+
+<body>
+    <div class="navbar"><a href="/" class="selected">Math and Physics for Games</a></div>
+    <section>
+        <div class="sidebar">
+            <a href="/soma"><img src="/static/img/sum.png" alt="sum visualizer">Sum</a>
+            <a href="/reacao"><img src="/static/img/intersection.png" alt="intersection visualizer">Reflection</i></a>
+            <a href="/interseccao"><img src="/static/img/reaction.png" alt="reaction visualizer">Intersection</a>
+            <a href="/colisao"><img src="/static/img/colision.png" alt="colision visualizer">Colision</a>
+            <a href="/angulos"><img src="/static/img/angles.png" alt="angles and pseudoangles visualizer">Angles</a>
+        </div>
+
+        <div class="index-container">
+            <div class="card" onclick="window.location.href='/soma'">
+                <img src="/static/img/sum.png" alt="sum visualizer">
+                <div class="card-content">
+                    <h2 class="card-title">Vector Sum</h2>
+                    <p class="card-desc">Visualize the sum of multiple vectors.</p>
+                </div>
+            </div>
+            <div class="card" onclick="window.location.href='/interseccao'">
+                <img src="/static/img/intersection.png" alt="intersection visualizer">
+                <div class="card-content">
+                    <h2 class="card-title">Line Intersects</h2>
+                    <p class="card-desc">Visualize if two lines intersect</p>
+                </div>
+            </div>
+            <div class="card" onclick="window.location.href='/reacao'">
+                <img src="/static/img/reaction.png" alt="reaction visualizer">
+                <div class="card-content">
+                    <h2 class="card-title">Vector Reflection</h2>
+                    <p class="card-desc">Visualize vector reflection over an wall.</p>
+                </div>
+            </div>
+            <div class="card" onclick="window.location.href='/colisao'">
+                <img src="/static/img/colision.png" alt="colision visualizer">
+                <div class="card-content">
+                    <h2 class="card-title">Element Colision</h2>
+                    <p class="card-desc">Visualize an element colide and alter trajectory</p>
+                </div>
+            </div>
+            <div class="card" onclick="window.location.href='/angulos'">
+                <img src="/static/img/angles.png" alt="angles and pseudoangles visualizer">
+                <div class="card-content">
+                    <h2 class="card-title">Angles</h2>
+                    <p class="card-desc">Visualize how angles and pseudoangles are represented</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2025 Vector Operations. All lefts reserved.</p>
+    </footer>
+</body>
+
+</html>

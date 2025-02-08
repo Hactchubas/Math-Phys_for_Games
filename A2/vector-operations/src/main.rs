@@ -1,18 +1,16 @@
 use std::path::PathBuf;
 
 use actix_cors::Cors;
-use actix_files::NamedFile;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_files as fs;
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result};
 use serde::Deserialize;
 mod structs;
 use structs::{elements::LineSegment, vector::Vector};
 
 #[get("/")]
-async fn app_home() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open(PathBuf::from(
-        "./static/index.html",
-    ))?)
-}
+async fn app_home() -> Result<fs::NamedFile> {
+    Ok(fs::NamedFile::open(PathBuf::from("./static/html/index.html"))?)}
+
 
 // Endpoint para soma de vetores
 #[post("/soma")]
@@ -183,12 +181,13 @@ async fn angulos(data: web::Json<FindAnglesRequest>) -> impl Responder {
         .map(|item| {
             vectors
                 .iter()
-                .filter_map(|x| Some((
+                .filter_map(|x| {
+                    Some((
                         // x.angle_between(&item, 1 as usize),
                         x.angle_between(&item, 3 as usize),
-                        x.to_owned()
+                        x.to_owned(),
                     ))
-                )
+                })
                 .collect()
         })
         .collect();
@@ -201,41 +200,41 @@ async fn angulos(data: web::Json<FindAnglesRequest>) -> impl Responder {
 ///
 // Endpoint para visualização da soma
 #[get("/soma")]
-async fn view_sum() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open(PathBuf::from(
-        "./static/vector-visualization.html",
+async fn view_sum() -> actix_web::Result<fs::NamedFile> {
+    Ok(fs::NamedFile::open(PathBuf::from(
+        "./static/html/sum-visualization.html",
     ))?)
 }
 
 // Endpoint para visualização da reação
 #[get("/reacao")]
-async fn view_reaction() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open(PathBuf::from(
-        "./static/reaction-visualization.html",
+async fn view_reaction() -> actix_web::Result<fs::NamedFile> {
+    Ok(fs::NamedFile::open(PathBuf::from(
+        "./static/html/reaction-visualization.html",
     ))?)
 }
 
 // Endpoint para visualização da intersecção de segmentos de reta
 #[get("/interseccao")]
-async fn view_intersection() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open(PathBuf::from(
-        "./static/intersection-visualization.html",
+async fn view_intersection() -> actix_web::Result<fs::NamedFile> {
+    Ok(fs::NamedFile::open(PathBuf::from(
+        "./static/html/intersection-visualization.html",
     ))?)
 }
 
 // Endpoint para visualização da reação
 #[get("/colisao")]
-async fn view_colision() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open(PathBuf::from(
-        "./static/colision-visualization.html",
+async fn view_colision() -> actix_web::Result<fs::NamedFile> {
+    Ok(fs::NamedFile::open(PathBuf::from(
+        "./static/html/colision-visualization.html",
     ))?)
 }
 
 // Endpoint para visualização da de ângulos
-#[get("/angles")]
-async fn view_angles() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open(PathBuf::from(
-        "./static/angle-visualization.html",
+#[get("/angulos")]
+async fn view_angles() -> actix_web::Result<fs::NamedFile> {
+    Ok(fs::NamedFile::open(PathBuf::from(
+        "./static/html/angle-visualization.html",
     ))?)
 }
 
@@ -283,6 +282,9 @@ async fn main() -> std::io::Result<()> {
                     .allow_any_header(),
             )
             .configure(configure_routes)
+            .service(
+                fs::Files::new("/static", "./static")
+            )
     })
     .bind("127.0.0.1:8080")?
     .run()
