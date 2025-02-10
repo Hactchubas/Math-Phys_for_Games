@@ -3,45 +3,42 @@
 
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
-    <script src="/static/js/angles.js"></script>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/angles.js"></script>
 </head>
 
 <body>
-    <!-- Navigation Bar -->
-    <nav>
-        <a href="/">Home</a>
-        <a href="/soma">Vector Sum</a>
-        <a href="/reacao">Vector Reflection</a>
-        <a href="/interseccao">Segments Intersection</a>
-        <a href="/colisao">Element colision</a>
-        <a href="/angulos">Angles and pseudoangles</a>
-    </nav>
-
-
-    <section class="content">
-        <aside>
-            <div class="intro">
-                <h2>Angles and pseudoangles</h2>
-                <p>Press, move and release to draw a new vector from origin.</p>
-            </div>
-
-            <div class="controls">
-                <button onclick="clearVectors()">Resetar</button>
-            </div>
-        </aside>
-
-        <section id="canvas-destination">           
-        </section>
-
-
+    <div class="navbar"><a href="/" class="selected">Math and Physics for Games</a></div>
+    <section>
+        <div class="sidebar">
+            <a href="/soma"><img src="/static/img/sum.png" alt="sum visualizer">Sum</a>
+            <a href="/reacao"><img src="/static/img/intersection.png" alt="intersection visualizer">Reflection</i></a>
+            <a href="/interseccao"><img src="/static/img/reaction.png" alt="reaction visualizer">Intersection</a>
+            <a href="/colisao"><img src="/static/img/colision.png" alt="colision visualizer">Colision</a>
+            <a href="/angulos"><img src="/static/img/angles.png" alt="angles and pseudoangles visualizer">Angles</a>
+        </div>
+        <div class="container">
+            <div id="canvas-destination"></div>
+            <aside>
+                <div class="intro">
+                    <h2>Angles and pseudoangles</h2>
+                    <div class="descrictor">
+                        <p>Press, move and release to draw a new vector from origin.</p>
+                    </div>
+                </div>
+                <div class="control-panel">
+                    <h3>Control Panel</h3>
+                    <div class="controls">
+                        <div class="controls">
+                            <button onclick="clearVectors()">Resetar</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
     </section>
-
-
-
-
-    <footer>
-        <p>&copy; 2025 Vector Operations API. All lefts reserved.</p>
+    <footer class="footer">
+        <p>&copy; 2025 Vector Operations. All lefts reserved.</p>
     </footer>
 
 </body>

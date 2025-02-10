@@ -181,6 +181,10 @@ aside {
     gap: 20px;
 }
 
+.intro .descrictor {
+    padding: 0 30px;
+}
+
 .control-panel h3 {
     padding: 20px;
     font-size: 1;
