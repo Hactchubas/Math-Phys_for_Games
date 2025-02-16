@@ -9,8 +9,10 @@ use structs::{elements::LineSegment, vector::Vector};
 
 #[get("/")]
 async fn app_home() -> Result<fs::NamedFile> {
-    Ok(fs::NamedFile::open(PathBuf::from("./static/html/index.html"))?)}
-
+    Ok(fs::NamedFile::open(PathBuf::from(
+        "./static/html/index.html",
+    ))?)
+}
 
 // Endpoint para soma de vetores
 #[post("/soma")]
@@ -125,13 +127,47 @@ async fn colisao(data: web::Json<LineSegmentsIntersectionRequest>) -> impl Respo
     }
 }
 
+// Endpoint para colisão
+#[post("/colisao-refletida")]
+async fn colisao_refletida(data: web::Json<ReflectedColision>) -> impl Responder {
+    let walls: Vec<LineSegment> = data
+        .walls
+        .iter()
+        .map(|(x, y)| LineSegment::new(x.to_owned(), y.to_owned()))
+        .collect();
+
+    let vec_pos = &data.vector.0;
+    let vec_vel = &data.vector.1;
+    let velocity = LineSegment::new(vec_pos.to_owned(), vec_vel + &vec_pos);
+
+    let intersected: Vec<Option<Vector>> = walls
+        .iter()
+        .map(|wall| {
+            if let Some(_) = velocity.intersects(wall) {
+                if let Some(wall_normal) = wall.get_normal() {
+                    velocity
+                        .vec_from_seg()
+                        .parameterized_reaction(1.0, &wall_normal, 1.0)
+                        .to_owned()
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    HttpResponse::Ok().json(intersected)
+}
+
 // Endpoint para reação
 #[post("/normal")]
 async fn normal_segmento(data: web::Json<LineSegmentsNormalRequest>) -> impl Responder {
     let seg_vec = data.segment.0.to_owned() - data.segment.1.to_owned();
 
     if let Some(normal_vec) = seg_vec.normal_vec() {
-        HttpResponse::Ok().json(normal_vec)
+        HttpResponse::Ok().json(normal_vec.unit())
     } else {
         HttpResponse::BadRequest().body("Não foi possível calcular a normal")
     }
@@ -174,20 +210,12 @@ async fn segmentos_intersectam(data: web::Json<FindIntersectingRequest>) -> impl
 #[post("/angulos")]
 async fn angulos(data: web::Json<FindAnglesRequest>) -> impl Responder {
     let vectors = data.vectors.to_owned();
-    // let method = data.method.to_owned();
-
     let angles: Vec<Vec<(Result<f64, &str>, Vector)>> = vectors
         .iter()
         .map(|item| {
             vectors
                 .iter()
-                .filter_map(|x| {
-                    Some((
-                        // x.angle_between(&item, 1 as usize),
-                        x.angle_between(&item, 3 as usize),
-                        x.to_owned(),
-                    ))
-                })
+                .filter_map(|x| Some((x.angle_between(&item, 3 as usize), x.to_owned())))
                 .collect()
         })
         .collect();
@@ -254,6 +282,7 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(segmentos_intersectam)
             .service(colisao)
             .service(angulos)
+            .service(colisao_refletida)
             .service(decomposicao_vetores),
     )
     .service(view_sum)
@@ -282,9 +311,7 @@ async fn main() -> std::io::Result<()> {
                     .allow_any_header(),
             )
             .configure(configure_routes)
-            .service(
-                fs::Files::new("/static", "./static")
-            )
+            .service(fs::Files::new("/static", "./static"))
     })
     .bind("127.0.0.1:8080")?
     .run()
@@ -323,5 +350,10 @@ struct FindIntersectingRequest {
 #[derive(Deserialize)]
 struct FindAnglesRequest {
     vectors: Vec<Vector>,
-    method: usize,
+}
+
+#[derive(Deserialize)]
+struct ReflectedColision {
+    walls: Vec<(Vector, Vector)>,
+    vector: (Vector, Vector),
 }

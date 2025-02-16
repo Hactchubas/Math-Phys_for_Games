@@ -5,7 +5,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use super::elements::{self, LineSegment};
+use super::elements::LineSegment;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vector {
@@ -41,7 +41,7 @@ impl Vector {
     }
 
     /// Return the unitary vector of Self
-    fn unit(&self) -> Self {
+    pub fn unit(&self) -> Self {
         self * (1 as f64 / self.modulus())
     }
 
@@ -118,7 +118,7 @@ impl Vector {
         if let Some((vn, vp)) = self.decompose(other) {
             let n = &vn * alpha;
             let p = &vp * (-beta);
-            let reac = n + p;
+            let reac = &n + &&p;
             Some(reac)
         } else {
             None

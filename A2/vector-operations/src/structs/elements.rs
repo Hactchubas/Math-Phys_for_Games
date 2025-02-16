@@ -12,6 +12,14 @@ impl LineSegment {
         LineSegment { x, y }
     }
 
+    pub fn get_a(&self) -> Vector {
+        self.x.clone()
+    }
+
+    pub fn get_b(&self) -> Vector {
+        self.y.clone()
+    }
+
     pub fn get_normal(&self) -> Option<Vector> {
         let seg_vec = &self.x - &self.y;
         seg_vec.normal_vec()

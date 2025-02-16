@@ -1,38 +1,8 @@
 
-let alfa = 1;
-let beta = 1;
-
-let alfaSlider
-let betaSlider
-let alfaValueDisplay
-let betaValueDisplay
-window.addEventListener('load', function () {
-    alfaSlider = document.getElementById('alfa');
-    betaSlider = document.getElementById('beta');
-    alfaValueDisplay = document.getElementById('alfaValue');
-    betaValueDisplay = document.getElementById('betaValue');
-
-    alfaSlider.addEventListener('input', function () {
-        alfa = parseFloat(alfaSlider.value);
-        alfaValueDisplay.textContent = alfa.toFixed(2);
-    });
-
-    betaSlider.addEventListener('input', function () {
-        beta = parseFloat(betaSlider.value);
-        betaValueDisplay.textContent = beta.toFixed(2);
-    });
-}, false);
-
-
 
 let baseUrl = 'http://127.0.0.1:8080/api';
 
-var edges = {
-    up: null,
-    right: null,
-    down: null,
-    left: null,
-};
+
 let character = {
     pos: null,
     vel: null
@@ -54,44 +24,84 @@ class Wall {
             })
             .then(res => {
                 this.n = createVector(...res.dimensions)
+                this.seta
             })
             .catch(e => {
                 console.log(e)
             })
+
+    }
+
+    drawNormal() {
+        return this.n ? [
+            (this.s[0] + this.e[0]) / 2,
+            (this.s[1] + this.e[1]) / 2,
+            (this.s[0] + this.e[0]) / 2 + 10 * this.n.x,
+            (this.s[1] + this.e[1]) / 2 + 10 * this.n.y
+        ] : [
+            (this.s[0] + this.e[0]) / 2,
+            (this.s[1] + this.e[1]) / 2,
+            (this.s[0] + this.e[0]) / 2,
+            (this.s[1] + this.e[1]) / 2,
+        ]
     }
 }
 
 /// guardam a posição do mouse no plano cartesiano
 var mouseXC, mouseYC = 0
 
+let edges = []
+let edgesSize = 0
+let drawed = []
+let walls = []
+let intersectingSegments = []
+let last = null
+
+var mouseXC, mouseYC = 0
 function setup() {
     let myCanvas = createCanvas(800, 600);
     myCanvas.parent("#canvas-destination");
     frameRate(20);
     textAlign(CENTER, CENTER);
-    let w2 = width / 15
-    let h2 = height / 15
-    edges = {
-        up: new Wall([-w2, h2], [w2, h2]),
-        right: new Wall([w2, h2], [w2, -h2]),
-        down: new Wall([w2, -h2], [-w2, -h2]),
-        left: new Wall([-w2, -h2], [-w2, h2]),
-    }
+    let w2 = width / 2 - 32
+    let h2 = height / 2 - 32
+    edges.push(
+        new Wall([-w2, h2], [w2, h2]),
+        new Wall([w2, h2], [w2, -h2]),
+        new Wall([w2, -h2], [-w2, -h2]),
+        new Wall([-w2, -h2], [-w2, h2])
+    )
 
     character.pos = createVector(0, 0)
-    character.vel = createVector(15, 30)
+    character.vel = createVector(15, 20)
+
+    for (let wall of edges) {
+        walls.push(
+            [
+                { dimensions: [wall.s[0], wall.s[1]] },
+                { dimensions: [wall.e[0], wall.e[1]] }
+            ]
+        )
+    }
+    edgesSize = edges.length
 
 }
 var stopDraw = false;
 var lastEdge = null;
 function draw() {
     goCartesian()
-
-
-    let { vel, pos } = character
-    updateVel(character)
-    updatePos(character)
     drawCharacter()
+    updateVel(character)
+
+    if (drawingMode && startPoint) {
+        let previewVector = createVector(mouseXC, mouseYC);
+        stroke(0, 0, 0)
+        line(
+            startPoint.x, startPoint.y,
+            previewVector.x, previewVector.y,
+        );
+    }
+
 
 }
 
@@ -118,45 +128,35 @@ function updatePos({ vel, pos }) {
 
     }
 }
-
 function updateVel({ vel, pos }) {
     if (vel) {
         const vel_req = { dimensions: [vel.x, vel.y] };
         const pos_req = { dimensions: [pos.x, pos.y] };
-        Promise.all(updateCharacterVel(vel_req, pos_req))
-            .then(values => {
-                return values.map(value => value.text())
-            })
-            .then(data => {
-                Promise.all(data)
-                    .then(data => {
-                        let index = data.indexOf('true')
-                        if (index != -1 && !stopDraw && lastEdge != index) {
-                            switch (index) {
-                                case 0:
-                                    character.vel.y = -character.vel.y
-                                    break;
-                                case 1:
-                                    character.vel.x = -character.vel.x
-                                    break;
-                                case 2:
-                                    character.vel.y = -character.vel.y
-                                    break;
-                                case 3:
-                                    character.vel.x = -character.vel.x
-                                    break;
-                                default: break;
-                            }
-                            //stopDraw = true
-                            lastEdge = index
-                        }
-                    })
+        fetch(
+            baseUrl + '/colisao-refletida',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    walls: walls,
+                    vector: [pos_req, vel_req]
+                })
+            }
+        ).then(res => res.json())
+            .then(res => {
+                let reflected = res.findIndex(value => value)
+                if (reflected != -1 && reflected != lastEdge) {
+                    character.vel = createVector(res[reflected].dimensions[0], res[reflected].dimensions[1])
+                    lastEdge = reflected
+                }
+            }).then(_ => {
+                updatePos(character)
             })
             .catch(e => {
                 console.log(e)
             })
-
-
     }
 }
 
@@ -174,39 +174,18 @@ async function updateCharacterPos(u, v) {
     });
 }
 
-function updateCharacterVel(vel, pos) {
-    let promises = []
-    for (let edge of Object.values(edges)) {
-        let data = {
-            segment_a: [
-                vel,
-                pos
-            ],
-            segment_b: [
-                { dimensions: [edge.s[0], edge.s[1]] },
-                { dimensions: [edge.e[0], edge.e[1]] }
-            ]
-        }
-        promises.push(
-            fetch(baseUrl + '/intersecsao', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-        )
-    }
-    return promises
-}
 
 function drawCharacter() {
     let { pos, vel } = character
     ellipse(pos.x, pos.y, 10)
-    seta(
-        pos.x, pos.y,
-        pos.x + vel.x, pos.y + vel.y
-    )
+    // seta(
+    //     pos.x, pos.y,
+    //     pos.x + vel.x, pos.y + vel.y
+    // )
+
+    if (last) {
+        seta(...last)
+    }
 }
 
 async function getNormal(s, e) {
@@ -225,6 +204,9 @@ async function getNormal(s, e) {
     })
 }
 
+
+let startPoint = null;
+let drawingMode = false;
 function goCartesian() {
     background(255)
 
@@ -238,12 +220,15 @@ function goCartesian() {
     translate(width / 2, height / 2)
     scale(1, -1, 1)
 
-    strokeWeight(5)
-    stroke(0, 0, 0)
     for (let edge of Object.values(edges)) {
-
+        strokeWeight(5)
+        stroke(0, 0, 0)
         line(edge.s[0], edge.s[1], edge.e[0], edge.e[1])
+        strokeWeight(2)
+        stroke(256, 0, 0)
+        seta(...edge.drawNormal())
     }
+    stroke(0, 0, 0)
     strokeWeight(2)
 }
 
@@ -251,6 +236,38 @@ function goCartesian() {
 function grabMouse() {
     mouseXC = mouseX - width / 2
     mouseYC = height / 2 - mouseY
+}
+
+
+function mousePressed() {
+    if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+        drawingMode = true;
+        startPoint = createVector(mouseXC, mouseYC);
+        line(
+            startPoint.x, startPoint.y,
+        )
+    }
+}
+
+function mouseReleased() {
+    if (drawingMode && startPoint) {
+        let endPoint = createVector(mouseXC, mouseYC);
+        edges.push(
+            new Wall([startPoint.x, startPoint.y], [endPoint.x, endPoint.y])
+        );
+        if (edges.length != edgesSize) {
+            for (let wall of edges) {
+                walls.push(
+                    [
+                        { dimensions: [wall.s[0], wall.s[1]] },
+                        { dimensions: [wall.e[0], wall.e[1]] }
+                    ]
+                )
+            }
+        }
+        drawingMode = false;
+        startPoint = null;
+    }
 }
 
 /** Renderiza texto corretamente no plano cartesiano
@@ -315,4 +332,32 @@ function seta(x1, y1, x2, y2) {
     triangle(x2, y2,
         x2 - 5 * vx + 2 * ux, y2 - 5 * vy + 2 * uy,
         x2 - 5 * vx - 2 * ux, y2 - 5 * vy - 2 * uy)
+}
+
+
+function resetCharacter() {
+
+    character.pos = createVector(0, 0)
+    character.vel = createVector(15, 20)
+}
+
+function clearWalls() {
+    let w2 = width / 2 - 32
+    let h2 = height / 2 - 32
+    edges = [
+        new Wall([-w2, h2], [w2, h2]),
+        new Wall([w2, h2], [w2, -h2]),
+        new Wall([w2, -h2], [-w2, -h2]),
+        new Wall([-w2, -h2], [-w2, h2])
+    ]
+
+    walls = []
+    for (let wall of edges) {
+        walls.push(
+            [
+                { dimensions: [wall.s[0], wall.s[1]] },
+                { dimensions: [wall.e[0], wall.e[1]] }
+            ]
+        )
+    }
 }
