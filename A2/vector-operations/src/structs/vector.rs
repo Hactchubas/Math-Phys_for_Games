@@ -13,8 +13,16 @@ pub struct Vector {
 }
 
 impl Vector {
-    fn new(dims: Vec<f64>) -> Self {
+    pub fn new(dims: Vec<f64>) -> Self {
         Vector { dimensions: dims }
+    }
+
+    pub fn get(&self, index: usize) -> Option<f64> {
+        if index < self.dimensions.len() {
+            Some(self.dimensions[index])
+        } else {
+            None
+        }
     }
 
     /// Return the number of dimensions of Self

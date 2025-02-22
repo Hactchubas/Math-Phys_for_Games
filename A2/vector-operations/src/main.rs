@@ -5,7 +5,11 @@ use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result};
 use serde::Deserialize;
 mod structs;
-use structs::{elements::LineSegment, vector::Vector};
+use structs::{
+    bounding_boxes::{BoundingType, Sphere, AABB},
+    elements::LineSegment,
+    vector::Vector,
+};
 
 #[get("/")]
 async fn app_home() -> Result<fs::NamedFile> {
@@ -129,7 +133,7 @@ async fn colisao(data: web::Json<LineSegmentsIntersectionRequest>) -> impl Respo
 
 // Endpoint para colisão
 #[post("/colisao-refletida")]
-async fn colisao_refletida(data: web::Json<ReflectedColision>) -> impl Responder {
+async fn colisao_refletida(data: web::Json<ReflectedColisionRequest>) -> impl Responder {
     let walls: Vec<LineSegment> = data
         .walls
         .iter()
@@ -223,6 +227,37 @@ async fn angulos(data: web::Json<FindAnglesRequest>) -> impl Responder {
     HttpResponse::Ok().json(angles)
 }
 
+// Endpoint para criar bounding volumes
+#[post("/envoltorios-construtor")]
+async fn envelopes_contructor(data: web::Json<BoundingBoxRequest>) -> impl Responder {
+    let bounding_type = data.bounding_type.as_str();
+    match BoundingType::from_str(bounding_type) {
+        BoundingType::AABB => {
+            if let Some(aabb) = AABB::from_points(&data.points) {
+                return HttpResponse::Ok().json(aabb);
+            } else {
+                return HttpResponse::InternalServerError().json("Error");
+            }
+        }
+        BoundingType::OBB => {
+            todo!();
+        }
+        BoundingType::Sphere => {
+            if let Some(sphere) = Sphere::from_points(&data.points) {
+                return HttpResponse::Ok().json(sphere);
+            } else {
+                return HttpResponse::InternalServerError().json("Error");
+            }
+        }
+        BoundingType::Capsule => {
+            todo!();
+        }
+        BoundingType::Unknown => {
+            HttpResponse::BadRequest().body("Não foi possível construir envoltório")
+        }
+    }
+}
+
 ///  End points de visualização
 ///
 ///
@@ -258,11 +293,19 @@ async fn view_colision() -> actix_web::Result<fs::NamedFile> {
     ))?)
 }
 
-// Endpoint para visualização da de ângulos
+// Endpoint para visualização de ângulos
 #[get("/angulos")]
 async fn view_angles() -> actix_web::Result<fs::NamedFile> {
     Ok(fs::NamedFile::open(PathBuf::from(
         "./static/html/angle-visualization.html",
+    ))?)
+}
+
+// Endpoint para visualização de contrução de volumes envoltórios
+#[get("/envoltorios-construtor")]
+async fn view_envelopes_contructor() -> actix_web::Result<fs::NamedFile> {
+    Ok(fs::NamedFile::open(PathBuf::from(
+        "./static/html/envelope-constructor-visualization.html",
     ))?)
 }
 
@@ -283,6 +326,7 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(colisao)
             .service(angulos)
             .service(colisao_refletida)
+            .service(envelopes_contructor)
             .service(decomposicao_vetores),
     )
     .service(view_sum)
@@ -290,6 +334,7 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
     .service(view_intersection)
     .service(view_colision)
     .service(view_angles)
+    .service(view_envelopes_contructor)
     .service(app_home);
 }
 
@@ -297,7 +342,7 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
 async fn main() -> std::io::Result<()> {
     // Abertura da página no navegador
     println!("Starting server at http://127.0.0.1:8080");
-    if let Err(e) = webbrowser::open("http://127.0.0.1:8080") {
+    if let Err(e) = webbrowser::open("http://127.0.0.1:8080/envoltorios-construtor") {
         println!("Failed to open browser: {}", e);
     }
 
@@ -353,7 +398,13 @@ struct FindAnglesRequest {
 }
 
 #[derive(Deserialize)]
-struct ReflectedColision {
+struct ReflectedColisionRequest {
     walls: Vec<(Vector, Vector)>,
     vector: (Vector, Vector),
+}
+
+#[derive(Deserialize)]
+struct BoundingBoxRequest {
+    points: Vec<Vector>,
+    bounding_type: String,
 }
