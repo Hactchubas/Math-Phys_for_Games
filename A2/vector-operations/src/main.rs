@@ -6,7 +6,7 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result
 use serde::Deserialize;
 mod structs;
 use structs::{
-    bounding_boxes::{BoundingType, Sphere, AABB},
+    bounding_boxes::{BoundingType, Sphere, AABB, OBB},
     elements::LineSegment,
     vector::Vector,
 };
@@ -240,7 +240,11 @@ async fn envelopes_contructor(data: web::Json<BoundingBoxRequest>) -> impl Respo
             }
         }
         BoundingType::OBB => {
-            todo!();
+            if let Some(obb) = OBB::from_points(&data.points) {
+                return HttpResponse::Ok().json(obb);
+            } else {
+                return HttpResponse::InternalServerError().json("Error");
+            }
         }
         BoundingType::Sphere => {
             if let Some(sphere) = Sphere::from_points(&data.points) {
