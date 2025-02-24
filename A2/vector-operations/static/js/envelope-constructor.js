@@ -2,12 +2,7 @@ let baseUrl = 'http://127.0.0.1:8080/api';
 
 let points = []
 let boundings = []
-class Segment {
-    constructor(s, e) {
-        this.s = s
-        this.e = e
-    }
-}
+
 
 /// guardam a posição do mouse no plano cartesiano
 var mouseXC, mouseYC = 0
@@ -89,29 +84,47 @@ class Bounding {
                     min_max.max.dimensions[0] - min_max.min.dimensions[0], min_max.max.dimensions[1] - min_max.min.dimensions[1]
                 ]
             },
-            drawer: rect,
-            color: [200,0,0, 50]
+            drawer: (p) => rect(...p),            
+            color: [200, 0, 0, 50]
         },
         "Sphere": {
-            constructor: (sphere) =>{
+            constructor: (sphere) => {
                 return [
                     sphere.center.dimensions[0], sphere.center.dimensions[1],
                     sphere.radius * 2, sphere.radius * 2
                 ]
             },
-            drawer: ellipse,
-            color: [0,200,0, 50]
-        }
+            drawer: (p) => {
+                ellipse(...p)
+            },
+            color: [0, 200, 0, 50]
+        },
+        "OBB": {
+            constructor: (obb) => {
+                return [obb.center, obb.axes, obb.half_sizes, obb.points]
+
+            },
+            drawer: (p) => {
+                beginShape();
+                for (let v of p[3]) {
+                    vertex(v.dimensions[0], v.dimensions[1]);
+                }
+                endShape(CLOSE);
+            },
+            color: [0, 0, 200, 50]
+        },
     }
+
     constructor(type, params) {
         this.drawer = this.methods[type].drawer
         this.params = this.methods[type].constructor(params)
         this.color = this.methods[type].color
+        this.type = type
     }
 
     draw() {
         colore(...this.color)
-        this.drawer(...this.params)
+        this.drawer(this.params)
     }
 
 }
@@ -229,7 +242,6 @@ function seta(x1, y1, x2, y2) {
 
 function mouseClicked() {
     if (mouseXC > -400 && mouseXC < 400 && mouseYC > -300 && mouseYC < 300) {
-        console.log(mouseXC, mouseYC);
         points.push(
             createVector(mouseXC, mouseYC)
         )

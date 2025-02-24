@@ -1,5 +1,6 @@
 use super::vector::Vector;
 use serde::{Deserialize, Serialize};
+use std::f64::{MAX, MIN};
 
 #[derive(Deserialize)]
 pub enum BoundingType {
@@ -175,5 +176,110 @@ impl Sphere {
         let dx = point.get(0).unwrap() - circle.center.get(0).unwrap();
         let dy = point.get(1).unwrap() - circle.center.get(1).unwrap();
         (dx.powi(2) + dy.powi(2)) <= circle.radius.powi(2)
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct OBB {
+    center: Vector,
+    axes: [Vector; 2],
+    half_sizes: Vector,
+    points: [Vector; 4],
+}
+
+impl OBB {
+    fn new(center: Vector, axes: [Vector; 2], half_sizes: Vector) -> Self {
+        let center_aux = center.clone();
+        let mut a = &center_aux + &&(&axes[0] * half_sizes.get(0).unwrap());
+        a = a + &axes[1] * half_sizes.get(1).unwrap();
+        let mut b = &center_aux - &&(&axes[0] * half_sizes.get(0).unwrap());
+        b = b + &axes[1] * half_sizes.get(1).unwrap();
+        let mut c = &center_aux - &&(&axes[0] * half_sizes.get(0).unwrap());
+        c = c - &axes[1] * half_sizes.get(1).unwrap();
+        let mut d = &center_aux + &&&(&axes[0] * half_sizes.get(0).unwrap());
+        d = d - &axes[1] * half_sizes.get(1).unwrap();
+
+        OBB {
+            center: center,
+            axes: [axes[0].clone(), axes[1].clone()],
+            half_sizes,
+            points: [a, b, c, d],
+        }
+    }
+
+    /// Compute the Oriented Bounding Box (OBB) from a set of 2D points without third-party libraries.
+    pub fn from_points(points: &[Vector]) -> Option<OBB> {
+        let n: usize = points.len();
+
+        // Step 1: Compute Centroid
+        let mut centroid = points
+            .iter()
+            .fold(Vector::new(vec![0.0, 0.0]), |sum, p| sum + p);
+
+        centroid = &centroid * (1.0 / n as f64);
+
+        // Step 2: Compute Covariance Matrix
+        let mut cov_xx = 0.0;
+        let mut cov_xy = 0.0;
+        let mut cov_yy = 0.0;
+
+        for p in points {
+            let diff = p - &centroid;
+            if let Some((diff_x, diff_y)) = OBB::get_point_xny(&diff) {
+                cov_xx += diff_x * diff_x;
+                cov_xy += diff_x * diff_y;
+                cov_yy += diff_y * diff_y;
+            } else {
+                return None;
+            }
+        }
+
+        cov_xx /= n as f64;
+        cov_xy /= n as f64;
+        cov_yy /= n as f64;
+
+        // Step 3: Compute Eigenvectors using an analytical method
+        let trace = cov_xx + cov_yy;
+        let det = cov_xx * cov_yy - cov_xy * cov_xy;
+        let lambda1 = (trace / 2.0) + ((trace * trace / 4.0 - det).sqrt());
+
+        let eigen_x = Vector::new(vec![cov_xy, lambda1 - cov_xx]).unit();
+
+        let eigen_y = eigen_x.normal_vec().unwrap();
+
+        // Step 4: Transform points into the new basis
+        let mut final_min_x = MAX;
+        let mut final_min_y = MAX;
+        let mut final_max_x = MIN;
+        let mut final_max_y = MIN;
+
+        for p in points {
+            let local_x = eigen_x.dot_product(&(p - &centroid)).unwrap();
+            let local_y = eigen_y.dot_product(&(p - &centroid)).unwrap();
+
+            final_min_x = final_min_x.min(local_x);
+            final_min_y = final_min_y.min(local_y);
+            final_max_x = final_max_x.max(local_x);
+            final_max_y = final_max_y.max(local_y);
+        }
+
+        // Step 5: Compute OBB properties
+        let mut half_sizes = Vector::new(vec![final_max_x, final_max_y])
+            - Vector::new(vec![final_min_x, final_min_y]);
+        half_sizes = &half_sizes * 0.5;
+
+        let mut obb_center = centroid + (&(&eigen_x * (final_max_x + final_min_x)) * 0.5);
+        obb_center = obb_center + (&(&eigen_y * (final_max_y + final_min_y)) * 0.5);
+
+
+        Some(OBB::new(obb_center, [eigen_x, eigen_y], half_sizes))
+    }
+
+    fn get_point_xny(point: &Vector) -> Option<(f64, f64)> {
+        if let (Some(x), Some(y)) = (point.get(0), point.get(1)) {
+            Some((x, y))
+        } else {
+            None
+        }
     }
 }
