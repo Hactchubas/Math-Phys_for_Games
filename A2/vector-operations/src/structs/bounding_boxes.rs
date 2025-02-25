@@ -2,12 +2,23 @@ use super::vector::Vector;
 use serde::{Deserialize, Serialize};
 use std::f64::{MAX, MIN};
 
+pub trait Bounding {
+    fn from_points(points: &[Vector]) -> Option<Self>
+    where
+        Self: Sized;
+    fn contains(&self, point: &Vector) -> bool;
+    fn intersects_aabb(&self, other: &AABB) -> bool;
+    fn intersects_sphere(&self, other: &Sphere) -> bool;
+    fn intersects_obb(&self, other: &OBB) -> bool;
+    fn bounding_type(&self) -> BoundingType;
+    fn project_on_axis(&self, axis: &Vector) -> (f64, f64);
+}
+
 #[derive(Deserialize)]
 pub enum BoundingType {
     AABB,
     OBB,
     Sphere,
-    Capsule,
     Unknown,
 }
 
@@ -17,7 +28,6 @@ impl BoundingType {
             "aabb" => BoundingType::AABB,
             "obb" => BoundingType::OBB,
             "sphere" => BoundingType::Sphere,
-            "capsule" => BoundingType::Capsule,
             _ => BoundingType::Unknown,
         }
     }
@@ -27,6 +37,92 @@ impl BoundingType {
 pub struct AABB {
     min: Vector,
     max: Vector,
+}
+
+impl Bounding for AABB {
+    fn from_points(points: &[Vector]) -> Option<Self> {
+        AABB::from_points(points)
+    }
+
+    fn contains(&self, point: &Vector) -> bool {
+        todo!()
+    }
+
+    fn bounding_type(&self) -> BoundingType {
+        BoundingType::AABB
+    }
+    fn intersects_aabb(&self, other: &AABB) -> bool {
+        self.min.get(0).unwrap() <= other.max.get(0).unwrap()
+            && self.max.get(0).unwrap() >= other.min.get(0).unwrap()
+            && self.min.get(1).unwrap() <= other.max.get(1).unwrap()
+            && self.max.get(1).unwrap() >= other.min.get(1).unwrap()
+    }
+
+    fn intersects_obb(&self, obb: &OBB) -> bool {
+        let axes = [Vector::new(vec![1.0, 0.0]), Vector::new(vec![0.0, 1.0])];
+        for axis in axes.iter() {
+            let (min_aabb, max_aabb) = self.project_on_axis(axis);
+            let (min_obb, max_obb) = obb.project_on_axis(axis);
+
+            if max_aabb < min_obb || max_obb < min_aabb {
+                return false;
+            }
+        }
+
+        let obb_axes = &obb.axes;
+        for axis in obb_axes.iter() {
+            let (min_aabb, max_aabb) = self.project_on_axis(axis);
+            let (min_obb, max_obb) = obb.project_on_axis(axis);
+
+            if max_aabb < min_obb || max_obb < min_aabb {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn intersects_sphere(&self, other: &Sphere) -> bool {
+        let sphere_projection = other.project_on_axis(&Vector::new(vec![1.0, 0.0]));
+        let aabb_projection = self.project_on_axis(&Vector::new(vec![1.0, 0.0]));
+
+        // Check if the projections on the axis overlap
+        if sphere_projection.1 < aabb_projection.0 || sphere_projection.0 > aabb_projection.1 {
+            return false;
+        }
+
+        let sphere_projection_y = other.project_on_axis(&Vector::new(vec![0.0, 1.0]));
+        let aabb_projection_y = self.project_on_axis(&Vector::new(vec![0.0, 1.0]));
+
+        if sphere_projection_y.1 < aabb_projection_y.0
+            || sphere_projection_y.0 > aabb_projection_y.1
+        {
+            return false;
+        }
+
+        true
+    }
+
+    fn project_on_axis(&self, axis: &Vector) -> (f64, f64) {
+        let corners = [
+            Vector::new(vec![self.min.get(0).unwrap(), self.min.get(1).unwrap()]),
+            Vector::new(vec![self.min.get(0).unwrap(), self.max.get(1).unwrap()]),
+            Vector::new(vec![self.max.get(0).unwrap(), self.min.get(1).unwrap()]),
+            Vector::new(vec![self.max.get(0).unwrap(), self.max.get(1).unwrap()]),
+        ];
+
+        let mut min_proj = f64::INFINITY;
+        let mut max_proj = f64::NEG_INFINITY;
+
+        for corner in corners.iter() {
+            if let Some(proj) = corner.dot_product(axis) {
+                min_proj = min_proj.min(proj);
+                max_proj = max_proj.max(proj);
+            }
+        }
+
+        (min_proj, max_proj)
+    }
 }
 
 impl AABB {
@@ -79,6 +175,67 @@ pub struct Sphere {
     radius: f64,
 }
 
+impl Bounding for Sphere {
+    fn from_points(points: &[Vector]) -> Option<Self> {
+        Sphere::from_points(points)
+    }
+
+    // Check if a point is inside a circle
+    fn contains(&self, point: &Vector) -> bool {
+        let dx = point.get(0).unwrap() - self.center.get(0).unwrap();
+        let dy = point.get(1).unwrap() - self.center.get(1).unwrap();
+        (dx.powi(2) + dy.powi(2)) <= self.radius.powi(2)
+    }
+
+    fn bounding_type(&self) -> BoundingType {
+        BoundingType::Sphere
+    }
+
+    fn intersects_aabb(&self, other: &AABB) -> bool {
+        let sphere_projection = self.project_on_axis(&Vector::new(vec![1.0, 0.0]));
+        let aabb_projection = other.project_on_axis(&Vector::new(vec![1.0, 0.0]));
+
+        // Check if the projections on the axis overlap
+        if sphere_projection.1 < aabb_projection.0 || sphere_projection.0 > aabb_projection.1 {
+            return false;
+        }
+
+        let sphere_projection_y = self.project_on_axis(&Vector::new(vec![0.0, 1.0]));
+        let aabb_projection_y = other.project_on_axis(&Vector::new(vec![0.0, 1.0]));
+
+        if sphere_projection_y.1 < aabb_projection_y.0
+            || sphere_projection_y.0 > aabb_projection_y.1
+        {
+            return false;
+        }
+
+        true
+    }
+
+    fn intersects_sphere(&self, other: &Sphere) -> bool {
+        let distance = &self.center - &other.center;
+        let radius_sum = self.radius + other.radius;
+        distance.modulus() <= radius_sum
+    }
+
+    fn intersects_obb(&self, obb: &OBB) -> bool {
+        let obb_axes = &obb.axes;
+        for axis in obb_axes.iter() {
+            let (min_aabb, max_aabb) = self.project_on_axis(axis);
+            let (min_obb, max_obb) = obb.project_on_axis(axis);
+            if max_aabb < min_obb || max_obb < min_aabb {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn project_on_axis(&self, axis: &Vector) -> (f64, f64) {
+        let center_proj = self.center.dot_product(axis).unwrap();
+        (center_proj - self.radius, center_proj + self.radius)
+    }
+}
+
 impl Sphere {
     pub fn from_points(points: &[Vector]) -> Option<Self> {
         if points.is_empty() {
@@ -94,7 +251,6 @@ impl Sphere {
         // No need to shuffle since points are already random
         Some(Self::welzl_helper(points, Vec::new()))
     }
-
     // Helper function to construct circle from 0, 1, 2, or 3 points
     fn make_circle(boundary: &[Vector]) -> Sphere {
         match boundary.len() {
@@ -146,7 +302,6 @@ impl Sphere {
             _ => unreachable!(),
         }
     }
-
     // Main recursive Welzl's algorithm implementation
     fn welzl_helper(points: &[Vector], mut boundary: Vec<Vector>) -> Sphere {
         // Base cases
@@ -169,13 +324,6 @@ impl Sphere {
         // Otherwise, p must be on the boundary of the minimal circle
         boundary.push(p);
         Self::welzl_helper(remaining, boundary)
-    }
-
-    // Check if a point is inside a circle
-    fn contains(&self, point: &Vector) -> bool {
-        let dx = point.get(0).unwrap() - self.center.get(0).unwrap();
-        let dy = point.get(1).unwrap() - self.center.get(1).unwrap();
-        (dx.powi(2) + dy.powi(2)) <= self.radius.powi(2)
     }
 }
 
@@ -271,7 +419,6 @@ impl OBB {
         let mut obb_center = centroid + (&(&eigen_x * (final_max_x + final_min_x)) * 0.5);
         obb_center = obb_center + (&(&eigen_y * (final_max_y + final_min_y)) * 0.5);
 
-
         Some(OBB::new(obb_center, [eigen_x, eigen_y], half_sizes))
     }
 
@@ -283,13 +430,95 @@ impl OBB {
         }
     }
 
-    pub fn constains(&self, point: Vector) -> bool {
+    fn get_points(&self) -> &[Vector; 4] {
+        &self.points
+    }
+}
+
+impl Bounding for OBB {
+    fn from_points(points: &[Vector]) -> Option<Self> {
+        OBB::from_points(points)
+    }
+
+    fn contains(&self, point: &Vector) -> bool {
         let diff = &self.center - &point;
 
-        if let (Some(d1), Some(d2)) = (diff.dot_product(&self.axes[0]), diff.dot_product(&self.axes[1])){
-            return d1.abs() <= self.half_sizes.get(0).unwrap() && d2.abs() <= self.half_sizes.get(1).unwrap()
+        if let (Some(d1), Some(d2)) = (
+            diff.dot_product(&self.axes[0]),
+            diff.dot_product(&self.axes[1]),
+        ) {
+            return d1.abs() <= self.half_sizes.get(0).unwrap()
+                && d2.abs() <= self.half_sizes.get(1).unwrap();
         } else {
-            return false
+            return false;
         }
+    }
+
+    fn bounding_type(&self) -> BoundingType {
+        BoundingType::OBB
+    }
+
+    fn intersects_aabb(&self, aabb: &AABB) -> bool {
+        let axes = [Vector::new(vec![1.0, 0.0]), Vector::new(vec![0.0, 1.0])];
+        for axis in axes.iter() {
+            let (min_aabb, max_aabb) = aabb.project_on_axis(axis);
+            let (min_obb, max_obb) = self.project_on_axis(axis);
+
+            if max_aabb < min_obb || max_obb < min_aabb {
+                return false;
+            }
+        }
+
+        let obb_axes = &self.axes;
+        for axis in obb_axes.iter() {
+            let (min_aabb, max_aabb) = aabb.project_on_axis(axis);
+            let (min_obb, max_obb) = self.project_on_axis(axis);
+
+            if max_aabb < min_obb || max_obb < min_aabb {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn intersects_sphere(&self, sphere: &Sphere) -> bool {
+        let obb_axes = &self.axes;
+        for axis in obb_axes.iter() {
+            let (min_aabb, max_aabb) = sphere.project_on_axis(axis);
+            let (min_obb, max_obb) = self.project_on_axis(axis);
+            if max_aabb < min_obb || max_obb < min_aabb {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn intersects_obb(&self, other: &OBB) -> bool {
+        let obb_axes = &self.axes;
+        let other_axes = &other.axes;
+        for axis in other_axes.iter().chain(obb_axes.iter()) {
+            let (min_other, max_other) = other.project_on_axis(axis);
+            let (min_obb, max_obb) = self.project_on_axis(axis);
+
+            if max_other < min_obb || max_obb < min_other {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn project_on_axis(&self, axis: &Vector) -> (f64, f64) {
+        let mut min_proj = f64::INFINITY;
+        let mut max_proj = f64::NEG_INFINITY;
+
+        for point in self.points.iter() {
+            if let Some(proj) = point.dot_product(axis) {
+                min_proj = min_proj.min(proj);
+                max_proj = max_proj.max(proj);
+            }
+        }
+
+        (min_proj, max_proj)
     }
 }

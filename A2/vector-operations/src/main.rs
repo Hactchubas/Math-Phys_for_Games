@@ -253,9 +253,6 @@ async fn envelopes_contructor(data: web::Json<BoundingBoxRequest>) -> impl Respo
                 return HttpResponse::InternalServerError().json("Error");
             }
         }
-        BoundingType::Capsule => {
-            todo!();
-        }
         BoundingType::Unknown => {
             HttpResponse::BadRequest().body("Não foi possível construir envoltório")
         }

@@ -40,17 +40,11 @@ function drawPoints() {
 
         stroke(...strokeColor)
         fill(...fillColor)
-        circle(point.x, point.y, 5)
+        circle(point.x, point.y, 2)
     }
 }
 
-async function makeEnvelope(type) {
-    let data = []
-    for (let point of points) {
-        data.push(
-            { dimensions: [point.x, point.y] }
-        )
-    }
+async function makeEnvelope(data, type) {
     let res = await fetch('http://127.0.0.1:8080/api/envoltorios-construtor', {
         method: 'POST',
         headers: {
@@ -67,10 +61,21 @@ async function makeEnvelope(type) {
 }
 
 function randomPoints() {
-    for (let i = 0; i < 5; i++) {
-        points.push(
-            p5.Vector.random2D().mult(random(0, 300))
-        );
+
+    for (let i = 0; i < 30; i++) {
+        // Generate a random base integer within the range of -300 to 300
+        const baseY = Math.floor(Math.random() * 601) - 300;
+        const baseX = Math.floor(Math.random() * 801) - 400;
+        const variance = 200
+        for (let i = 0; i < 3; i++) {
+            let valX = baseX + Math.floor(Math.random() * variance) - 1
+            valX = Math.max(-width / 2, Math.min(width / 2, valX))
+            let valY = baseY + Math.floor(Math.random() * variance) - 1
+            valY = Math.max(-height / 2, Math.min(height / 2, valY))
+            points.push(
+                createVector(valX, valY)
+            )
+        }
     }
     updateEnvelope()
 }
@@ -84,7 +89,7 @@ class Bounding {
                     min_max.max.dimensions[0] - min_max.min.dimensions[0], min_max.max.dimensions[1] - min_max.min.dimensions[1]
                 ]
             },
-            drawer: (p) => rect(...p),            
+            drawer: (p) => rect(...p),
             color: [200, 0, 0, 50]
         },
         "Sphere": {
@@ -134,12 +139,29 @@ async function updateEnvelope() {
     boundings = []
     const checkedIds = [...document.querySelectorAll('input[type="checkbox"]:checked')]
         .map(checkbox => checkbox.id)
-        .forEach(async bounding => {
-            let res = await makeEnvelope(bounding)
-            boundings.push(
-                new Bounding(bounding, res)
+
+    for (let point of points) {
+        let data = []
+        data.push(
+            { dimensions: [point.x, point.y] }
+        )
+    }
+    const slicer = 3
+    const numCalls = Math.floor(points.length / slicer);
+    for (let i = 0; i < numCalls; i++) {
+        const intSubset = points.slice(i * slicer, (i + 1) * slicer);
+        let data = []
+        for (let point of intSubset) {
+            data.push(
+                { dimensions: [point.x, point.y] }
             )
-        })
+        }
+        const bounding = checkedIds[Math.floor(Math.random() * checkedIds.length)];
+        let res = await makeEnvelope(data, bounding)
+        boundings.push(
+            new Bounding(bounding, res)
+        )
+    }
 }
 
 function drawBoundings() {

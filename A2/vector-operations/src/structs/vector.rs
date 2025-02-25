@@ -25,7 +25,7 @@ impl Vector {
         }
     }
 
-    /// Return the number of dimensions of Self
+    /// Return the number of dimensions of a Vector
     pub fn cardinality(&self) -> usize {
         self.dimensions.len()
     }
@@ -40,7 +40,7 @@ impl Vector {
     }
 
     /// Return the modulus of Self
-    fn modulus(&self) -> f64 {
+    pub fn modulus(&self) -> f64 {
         self.dimensions
             .iter()
             .map(|&di| di.powi(2))
@@ -50,7 +50,11 @@ impl Vector {
 
     /// Return the unitary vector of Self
     pub fn unit(&self) -> Self {
-        self * (1 as f64 / self.modulus())
+        if self.modulus() != 0.0 {
+            self * (1 as f64 / self.modulus())
+        } else {
+            self * 0.0
+        }
     }
 
     /// Return tuple of two new Vectors equal to the given {self} and {other} with equal cardinalities
@@ -175,11 +179,11 @@ impl Vector {
         let angle_dot = self.angle_dot(other);
         let angle_cross = self.angle_cross(other);
         match (angle_dot, angle_cross) {
-            (Some(dot_angle), Some(cross_angle)) =>{
+            (Some(dot_angle), Some(cross_angle)) => {
                 let angle = dot_angle * cross_angle.signum(); // Retorna o ângulo correto [-π, π]
-                Some(angle) 
+                Some(angle)
             }
-            ( _ , _ ) => None
+            (_, _) => None,
         }
     }
 
@@ -208,29 +212,21 @@ impl Vector {
             }
             _ => Err("Method not valid, use => 1: odt, 2: cross, 3: both"),
         }
-
     }
-    
+
     fn pseudo_angle(&self) -> f64 {
         if self.dimensions[0] == 0.0 && self.dimensions[1] == 0.0 {
             return 0.0;
         }
 
-        let norm_x = self.dimensions[0] / self.modulus();
-        let norm_y = self.dimensions[1]  / self.modulus();
+        let norm = self.unit();
+        let (x, y) = (norm.dimensions[0], norm.dimensions[1]);
 
-        if norm_y >= 0.0 {
-            if norm_x >= 0.0 {
-                norm_y / (norm_x + norm_y) // Quadrante 1
-            } else {
-                1.0 - norm_x / (-norm_x + norm_y) // Quadrante 2
-            }
-        } else {
-            if norm_x < 0.0 {
-                2.0 + (-norm_y) / (-norm_x - norm_y) // Quadrante 3
-            } else {
-                3.0 + norm_x / (norm_x - norm_y) // Quadrante 4
-            }
+        match (x >= 0.0, y >= 0.0) {
+            (true, true) => y / (x + y),
+            (false, true) => 1.0 - x / (-x + y),
+            (false, false) => 2.0 + (-y) / (-x - y),
+            (true, false) => 3.0 + x / (x - y),
         }
     }
     /// **Calcula o pseudoângulo entre dois vetores no quadrado [0,8).**
@@ -238,7 +234,11 @@ impl Vector {
         let pa1 = self.pseudo_angle();
         let pa2 = other.pseudo_angle();
         let diff = pa2 - pa1;
-        if diff < 0.0 { diff + 8.0 } else { diff }
+        if diff < 0.0 {
+            diff + 8.0
+        } else {
+            diff
+        }
     }
 }
 
