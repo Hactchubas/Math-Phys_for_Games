@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{iter::Chain, path::PathBuf};
 
 use actix_cors::Cors;
 use actix_files as fs;
@@ -6,7 +6,7 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result
 use serde::Deserialize;
 mod structs;
 use structs::{
-    bounding_boxes::{BoundingType, Sphere, AABB, OBB},
+    bounding_boxes::{Bounding, BoundingType, Sphere, AABB, OBB},
     elements::LineSegment,
     vector::Vector,
 };
@@ -259,6 +259,57 @@ async fn envelopes_contructor(data: web::Json<BoundingBoxRequest>) -> impl Respo
     }
 }
 
+// Endpoint para encontrar envoltórios que intersectam
+#[post("/envoltorios-intersectam")]
+async fn envelopess_intersectam(data: web::Json<BoundingBoxCollisionRequest>) -> impl Responder {
+    let aabb: Vec<(AABB, usize)> = data.aabb.to_owned();
+    let obb: Vec<(OBB, usize)> = data.obb.to_owned();
+    let sphere: Vec<(Sphere, usize)> = data.sphere.to_owned();
+
+    let boundings: Vec<(usize, Box<dyn Bounding>)> = aabb
+        .to_owned()
+        .into_iter()
+        .map(|_aabb: (AABB, usize)| (_aabb.1.to_owned(), Box::new(_aabb.0) as Box<dyn Bounding>))
+        .chain(
+            obb.to_owned().into_iter().map(|_obb: (OBB, usize)| {
+                (_obb.1.to_owned(), Box::new(_obb.0) as Box<dyn Bounding>)
+            }),
+        )
+        .chain(
+            sphere
+                .to_owned()
+                .into_iter()
+                .map(|_sphere: (Sphere, usize)| {
+                    (
+                        _sphere.1.to_owned(),
+                        Box::new(_sphere.0) as Box<dyn Bounding>,
+                    )
+                }),
+        )
+        .collect();
+
+    let mut bounding_intersect: Vec<(usize, usize)> = vec![];
+    boundings.into_iter().for_each(|(id, bounding)| {
+        aabb.to_owned().into_iter().for_each(|(other, other_id)| {
+            if id != other_id && bounding.intersects_aabb(&other)  {
+                bounding_intersect.push((id, other_id));
+            }
+        });
+        obb.to_owned().into_iter().for_each(|(other, other_id)| {
+            if id != other_id && bounding.intersects_obb(&other)  {
+                bounding_intersect.push((id, other_id));
+            }
+        });
+        sphere.to_owned().into_iter().for_each(|(other, other_id)| {
+            if id != other_id && bounding.intersects_sphere(&other) {
+                bounding_intersect.push((id, other_id));
+            }
+        });
+    });
+
+    HttpResponse::Ok().json(bounding_intersect)
+}
+
 ///  End points de visualização
 ///
 ///
@@ -328,6 +379,7 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(angulos)
             .service(colisao_refletida)
             .service(envelopes_contructor)
+            .service(envelopess_intersectam)
             .service(decomposicao_vetores),
     )
     .service(view_sum)
@@ -408,4 +460,11 @@ struct ReflectedColisionRequest {
 struct BoundingBoxRequest {
     points: Vec<Vector>,
     bounding_type: String,
+}
+
+#[derive(Deserialize)]
+struct BoundingBoxCollisionRequest {
+    aabb: Vec<(AABB, usize)>,
+    obb: Vec<(OBB, usize)>,
+    sphere: Vec<(Sphere, usize)>,
 }

@@ -1,8 +1,7 @@
 let baseUrl = 'http://127.0.0.1:8080/api';
 
-let points = []
+let saved_points = []
 let boundings = []
-
 
 /// guardam a posição do mouse no plano cartesiano
 var mouseXC, mouseYC = 0
@@ -30,7 +29,7 @@ function draw() {
 }
 
 function drawPoints() {
-    for (let point of points) {
+    for (let point of saved_points) {
 
         textSize(14);
 
@@ -42,6 +41,116 @@ function drawPoints() {
         fill(...fillColor)
         circle(point.x, point.y, 2)
     }
+}
+
+
+
+
+
+function randomPoints() {
+    let new_points = []
+    for (let i = 0; i < 3; i++) {
+        // Generate a random base integer within the range of -300 to 300
+        const baseY = Math.floor(Math.random() * 601) - 300;
+        const baseX = Math.floor(Math.random() * 801) - 400;
+        const variance = 200
+        for (let i = 0; i < 3; i++) {
+            let valX = baseX + Math.floor(Math.random() * variance) - 1
+            valX = Math.max(-width / 2, Math.min(width / 2, valX))
+            let valY = baseY + Math.floor(Math.random() * variance) - 1
+            valY = Math.max(-height / 2, Math.min(height / 2, valY))
+            new_points.push(
+                createVector(valX, valY)
+            )
+        }
+    }
+
+    saved_points.push(...new_points)
+    updateEnvelope(new_points)
+
+}
+
+class Bounding {
+    methods = {
+        "AABB": {
+            constructor: (min_max) => {
+                return [
+                    min_max.min.dimensions[0], min_max.min.dimensions[1],
+                    min_max.max.dimensions[0] - min_max.min.dimensions[0], min_max.max.dimensions[1] - min_max.min.dimensions[1]
+                ]
+            },
+            drawer: (p) => rect(...p),
+        },
+        "Sphere": {
+            constructor: (sphere) => {
+                return [
+                    sphere.center.dimensions[0], sphere.center.dimensions[1],
+                    sphere.radius * 2, sphere.radius * 2
+                ]
+            },
+            drawer: (p) => {
+                ellipse(...p)
+            }
+        },
+        "OBB": {
+            constructor: (obb) => {
+                return [obb.center, obb.axes, obb.half_sizes, obb.points]
+
+            },
+            drawer: (p) => {
+                beginShape();
+                for (let v of p[3]) {
+                    vertex(v.dimensions[0], v.dimensions[1]);
+                }
+                endShape(CLOSE);
+            }
+        },
+    }
+
+    constructor(type, params) {
+        this.requestOBJ = params
+
+        this.drawer = this.methods[type].drawer
+        this.params = this.methods[type].constructor(params)
+        this.color = 3
+        this.type = type
+    }
+    draw() {
+        colore(this.color * 5, 0, 0, this.color * 5 + 10)
+        this.drawer(this.params)
+    }
+
+}
+
+
+async function updateEnvelope(new_points) {
+    const checkedIds = [...document.querySelectorAll('input[type="checkbox"]:checked')]
+        .map(checkbox => checkbox.id)
+
+    for (let point of new_points) {
+        let data = []
+        data.push(
+            { dimensions: [point.x, point.y] }
+        )
+    }
+    const slicer = 3
+    const numCalls = Math.floor(new_points.length / slicer);
+    for (let i = 0; i < numCalls; i++) {
+        const intSubset = new_points.slice(i * slicer, (i + 1) * slicer);
+        let data = []
+        for (let point of intSubset) {
+            data.push(
+                { dimensions: [point.x, point.y] }
+            )
+        }
+        const bounding = checkedIds[Math.floor(Math.random() * checkedIds.length)];
+        let res = await makeEnvelope(data, bounding)
+        boundings.push(
+            new Bounding(bounding, res)
+        )
+    }
+
+    updateCollisions()
 }
 
 async function makeEnvelope(data, type) {
@@ -57,117 +166,65 @@ async function makeEnvelope(data, type) {
     })
 
     res = await res.json()
+
     return res
 }
 
-function randomPoints() {
-
-    for (let i = 0; i < 30; i++) {
-        // Generate a random base integer within the range of -300 to 300
-        const baseY = Math.floor(Math.random() * 601) - 300;
-        const baseX = Math.floor(Math.random() * 801) - 400;
-        const variance = 200
-        for (let i = 0; i < 3; i++) {
-            let valX = baseX + Math.floor(Math.random() * variance) - 1
-            valX = Math.max(-width / 2, Math.min(width / 2, valX))
-            let valY = baseY + Math.floor(Math.random() * variance) - 1
-            valY = Math.max(-height / 2, Math.min(height / 2, valY))
-            points.push(
-                createVector(valX, valY)
-            )
-        }
-    }
-    updateEnvelope()
-}
-
-class Bounding {
-    methods = {
-        "AABB": {
-            constructor: (min_max) => {
-                return [
-                    min_max.min.dimensions[0], min_max.min.dimensions[1],
-                    min_max.max.dimensions[0] - min_max.min.dimensions[0], min_max.max.dimensions[1] - min_max.min.dimensions[1]
-                ]
-            },
-            drawer: (p) => rect(...p),
-            color: [200, 0, 0, 50]
-        },
-        "Sphere": {
-            constructor: (sphere) => {
-                return [
-                    sphere.center.dimensions[0], sphere.center.dimensions[1],
-                    sphere.radius * 2, sphere.radius * 2
-                ]
-            },
-            drawer: (p) => {
-                ellipse(...p)
-            },
-            color: [0, 200, 0, 50]
-        },
-        "OBB": {
-            constructor: (obb) => {
-                return [obb.center, obb.axes, obb.half_sizes, obb.points]
-
-            },
-            drawer: (p) => {
-                beginShape();
-                for (let v of p[3]) {
-                    vertex(v.dimensions[0], v.dimensions[1]);
-                }
-                endShape(CLOSE);
-            },
-            color: [0, 0, 200, 50]
-        },
-    }
-
-    constructor(type, params) {
-        this.drawer = this.methods[type].drawer
-        this.params = this.methods[type].constructor(params)
-        this.color = this.methods[type].color
-        this.type = type
-    }
-
-    draw() {
-        colore(...this.color)
-        this.drawer(this.params)
-    }
-
-}
-
-
-async function updateEnvelope() {
-    boundings = []
-    const checkedIds = [...document.querySelectorAll('input[type="checkbox"]:checked')]
-        .map(checkbox => checkbox.id)
-
-    for (let point of points) {
-        let data = []
-        data.push(
-            { dimensions: [point.x, point.y] }
-        )
-    }
-    const slicer = 3
-    const numCalls = Math.floor(points.length / slicer);
-    for (let i = 0; i < numCalls; i++) {
-        const intSubset = points.slice(i * slicer, (i + 1) * slicer);
-        let data = []
-        for (let point of intSubset) {
-            data.push(
-                { dimensions: [point.x, point.y] }
-            )
-        }
-        const bounding = checkedIds[Math.floor(Math.random() * checkedIds.length)];
-        let res = await makeEnvelope(data, bounding)
-        boundings.push(
-            new Bounding(bounding, res)
-        )
-    }
-}
-
 function drawBoundings() {
-    for (let bounding of boundings) {
-        bounding.draw()
+    for (let index in boundings) {
+        boundings[index].draw()
     }
+}
+
+
+
+
+async function updateCollisions() {
+
+    let data = {
+        aabb: [],
+        obb: [],
+        sphere: [],
+    }
+    for (let index in boundings) {
+        switch (boundings[index].type) {
+            case 'AABB':
+                data.aabb.push([boundings[index].requestOBJ, parseInt(index)])
+                break;
+            case 'OBB':
+                data.obb.push([boundings[index].requestOBJ, parseInt(index)])
+                break;
+            case 'Sphere':
+                data.sphere.push([boundings[index].requestOBJ, parseInt(index)])
+                break;
+            default: break;
+        }
+    }
+    let res = await checkCollisions(data)
+
+
+    return res
+}
+
+async function checkCollisions(data) {
+    let res = await fetch('http://127.0.0.1:8080/api/envoltorios-intersectam', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+
+    res = await res.json()
+    console.log(res)
+
+    let intersecting_boundings = res
+    for (let index in boundings) {
+        intersecting_boundings
+            .filter(intersec => intersec[0] == parseInt(index))
+            .forEach(_ => boundings[index].color += 5)
+    }
+    return res
 }
 
 
@@ -264,7 +321,7 @@ function seta(x1, y1, x2, y2) {
 
 function mouseClicked() {
     if (mouseXC > -400 && mouseXC < 400 && mouseYC > -300 && mouseYC < 300) {
-        points.push(
+        saved_points.push(
             createVector(mouseXC, mouseYC)
         )
         updateEnvelope()
@@ -276,6 +333,6 @@ function mouseReleased() {
 }
 
 function clearPoints() {
-    points = []
+    saved_points = []
     boundings = []
 }

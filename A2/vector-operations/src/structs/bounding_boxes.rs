@@ -7,10 +7,13 @@ pub trait Bounding {
     where
         Self: Sized;
     fn contains(&self, point: &Vector) -> bool;
+
     fn intersects_aabb(&self, other: &AABB) -> bool;
     fn intersects_sphere(&self, other: &Sphere) -> bool;
     fn intersects_obb(&self, other: &OBB) -> bool;
+
     fn bounding_type(&self) -> BoundingType;
+
     fn project_on_axis(&self, axis: &Vector) -> (f64, f64);
 }
 
@@ -33,7 +36,7 @@ impl BoundingType {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AABB {
     min: Vector,
     max: Vector,
@@ -169,7 +172,7 @@ impl AABB {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Sphere {
     center: Vector,
     radius: f64,
@@ -327,7 +330,7 @@ impl Sphere {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OBB {
     center: Vector,
     axes: [Vector; 2],
