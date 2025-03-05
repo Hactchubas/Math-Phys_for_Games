@@ -48,7 +48,15 @@ impl Bounding for AABB {
     }
 
     fn contains(&self, point: &Vector) -> bool {
-        todo!()
+        let (min_x, min_y) = AABB::get_point_xny(&self.min).unwrap();
+        let (max_x, max_y) = AABB::get_point_xny(&self.max).unwrap();
+        let (p_x, p_y) = AABB::get_point_xny(point).unwrap();
+
+        if p_x < min_x || p_x > max_x || p_y < min_y || p_y > max_y {
+            false
+        } else {
+            true
+        }
     }
 
     fn bounding_type(&self) -> BoundingType {
